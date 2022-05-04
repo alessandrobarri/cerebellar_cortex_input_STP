@@ -1,0 +1,14 @@
+#!/bin/bash
+
+g++ -O3 -std=c++11 -o simCC_learn-MULTI_2pools.out simCC_learn-MULTI_2pools.cpp -lgsl -lgslcblas -lm -larmadillo
+#~ g++ -O3 -std=c++11 -o simCC_learn-MULTI_2pools_full.out simCC_learn-MULTI_2pools_full.cpp -lgsl -lgslcblas -lm -larmadillo
+
+## for newest c++ standard compile with
+## -std=c++11
+
+## for boost library compile with
+##-lboost_system
+
+## for armadillo library compile with
+##-larmadillo
+
