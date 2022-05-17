@@ -44,10 +44,7 @@ double draw_patterns(double mu, double sigma, double pact, int patternflag, gsl_
 			nu=mu+gsl_ran_gaussian_ziggurat (r, sigma);
 			if(nu<0) nu=0;
 		}
-		//~ else{ // test: Gaussian with redrawn zero MFs
-			//~ nu=-1;
-			//~ while(nu<0) nu=mu+gsl_ran_gaussian_ziggurat (r, sigma);
-		//~ }
+
 	}
 	return nu;
 }

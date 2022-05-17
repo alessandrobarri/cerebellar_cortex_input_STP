@@ -107,12 +107,10 @@ void generate_weights_DS(struct presyn_2pools W[], struct presyn JEI[], struct c
 
 		W[i].alpha1=new double [k];		W[i].WU1=new double [k];	 	W[i].Upf1=new double [k];
 		W[i].alpha2=new double [k];		W[i].WU2=new double [k];	 	W[i].Upf2=new double [k];
-		W[i].tsyn1=new double* [k];		W[i].tsyn2=new double* [k];
 
 		for(j= 0; j < k; j++) {
 			W[i].idx[j]=dummy[j];
 			W[i].x1p[j]=new double [PP];	W[i].x2p[j]=new double [PP];
-			W[i].tsyn1[j]=new double [PP];	W[i].tsyn2[j]=new double [PP];
 		}
 		dummy.clear();
 	}

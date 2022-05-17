@@ -92,7 +92,6 @@ void generate_ratePv_correlations(struct cluster_struct CL[], std::vector <int> 
 				finidx=round(NSYN_2*grouplims(k+1));
 				//~ inidx=round(NSYN_2*grouplims(4-k));
 				//~ finidx=round(NSYN_2*grouplims(5-k));
-				//~ std::cout << inidx<< "\t"<< finidx<< std::endl;
 			}
 			// other mixtures
 			else{

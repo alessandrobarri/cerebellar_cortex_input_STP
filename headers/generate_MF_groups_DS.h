@@ -41,7 +41,6 @@ void generate_MF_groups_DS(int MFgroup[], struct cluster_struct CL[], arma::vec&
 				for (j = 0; j < 5; j++) {
 					inidx=round(M*grouplims(4-j));
 					finidx=round(M*grouplims(5-j));
-					//~ std::cout << inidx<< "\t"<< finidx<< std::endl;
 					for (i = inidx; i < finidx; i++) MFgroup[i]=j;
 				}
 			}
@@ -65,7 +64,6 @@ void generate_MF_groups_DS(int MFgroup[], struct cluster_struct CL[], arma::vec&
 				if(FLAGS.pattern==4){
 					inidx=round(M*grouplims(k));
 					finidx=round(M*grouplims(k+1));
-					//~ std::cout << inidx<< "\t"<< finidx<< std::endl;
 				}
 				// other mixtures
 				else{

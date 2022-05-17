@@ -62,8 +62,6 @@ int find_golgi_params (const gsl_vector * x, void *para, gsl_vector * f){
 		tp=(theta - hext + JEI*nuI_set)/sqrt(hext_var);
 		fc=std::erfc(tp/sqrt(2.0))/2.0;
 
-		//~ std::cout << "nuΕ = " << nuE<< "\t"<< ", hE = " << hE << ", fc = " << fc << ", JEI = " << JEI << ", gain = " << gain<< "\n";
-
 		y0=nuE_set -nuE;
 		y1=fc_set -fc;
 

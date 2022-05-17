@@ -20,8 +20,6 @@ void generate_relprob_DS(double Ntoy_fast[], double Ntoy_slow[], double Utoy_slo
 			b=a*( 1.0/0.5 -1);
 			for (i = 0; i < NSYN_2; i++) Utoy_slow[i]=gsl_ran_beta(r, a, b);
 		}
-		//~ for (i = 0; i < 20; i++) std::cout<< Utoy_slow[i]<< endl;
-		//~ std::cout <<"\n";
 		for (i = 0; i < NSYN_2; i++) 	dummyD.push_back(Utoy_slow[i]);
 		idx_sorted=sort_indices(dummyD);
 		for (i = 0; i < NSYN_2; i++) 	Utoy_slow[i]=dummyD[idx_sorted[i]];

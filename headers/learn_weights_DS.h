@@ -4,7 +4,7 @@ double learn_weights_DS(arma::mat& GC_trial, struct presyn& J, arma::uvec& Jidx,
 	double YL[N],YLm[N],LAMBm[N],LAMB[N],Jm[N];
 	double Werr2[BINS],PT_BINS[BINS],CFrate[BINS],DELTA[BINS];
 	double PT[MAX_data+1];
-	double a,shift,delJ,Ampt,CFW,gamma,Err_tot,Err_tot_final,hPC,GCavrg;
+	double a,shift,delJ,gamma,Err_tot,Err_tot_final,hPC,GCavrg;
 	double Werr2_mean;
 	std::vector <double> err_vec;
 
@@ -21,43 +21,28 @@ double learn_weights_DS(arma::mat& GC_trial, struct presyn& J, arma::uvec& Jidx,
 
 		if(FLAGS.mode==77){
 			// draw CF interval from uniform distribution
-			if(FLAGS.tsignal==1) 		shift=std::round(gsl_ran_flat(r, interv_min, interv_max)/dbint)*dbint;		// discretise for delta rule
-			else						shift=gsl_ran_flat(r, interv_min, interv_max);
+			shift=std::round(gsl_ran_flat(r, interv_min, interv_max)/dbint)*dbint;		// discretise for delta rule
 		}
 		else{
 			shift =delays;
 		}
-
-		// adjust CFwidth for short delays
-		if(shift <0.03) 	CFW=0.01;
-		else 				CFW=CFwidth;
 
 		t=tt=kk=0;
 		// 	generate CF (teaching) signal
 		PT[0]=PCsp;
 		t++;
 		while(t <= MAX_data) {
-			if(FLAGS.tsignal==0) {
-				// gaussian target signal
-				PT[t]=PCsp*(1.0-exp( -(dt*t-(Tpre+shift))*(dt*t-(Tpre+shift))/(2*CFW*CFW) ));
-			}
-			else if(FLAGS.tsignal==1){
-				// 'delta' target signal
-				if( abs(dt*t-(Tpre+shift)) <=0.001)			PT[t]=0.0;
-				else 										PT[t]=PCsp;
-			}
+			// 'delta' target signal
+			if( abs(dt*t-(Tpre+shift)) <=0.001)			PT[t]=0.0;
+			else 										PT[t]=PCsp;
 
 			if(dt*t<Tpre)	PT[t]=PCsp;
 
 			// downsampling of PT
 			if( (tt % int(dbint/dt)==0) & (kk<BINS) & ((t-ttpre)*dt>=-0.1) ) {
 				PT_BINS[kk]=PT[t];
-				if(FLAGS.tsignal==1){
-					if(PT_BINS[kk]<1.0)	Werr2[kk]=errWeight*errWeight;
-					else					Werr2[kk]=1.0;
-				}
-				else 						Werr2[kk]=1.0;
-				//~ cout << tt << "\t" << kk << "\t" << dt*(t-ttpre) << "\t" << PT_BINS[kk] <<endl;
+				if(PT_BINS[kk]<1.0)	Werr2[kk]=errWeight*errWeight;
+				else					Werr2[kk]=1.0;
 				if(FLAGS.mode==77){
 					// if target function is different on every trial, write 100 samples to file
 					if((pp==0) & (pp2==0) & (rr==0) & (m<100)){
@@ -115,7 +100,6 @@ double learn_weights_DS(arma::mat& GC_trial, struct presyn& J, arma::uvec& Jidx,
 			hPC=a/sqN-GCavrg*JI*sqN +PCsp;
 			Err_tot+=(hPC-PT_BINS[t])*(hPC-PT_BINS[t])*Werr2[t];
 			CFrate[t]=std::max( CFsp + CFscale*(hPC-PT_BINS[t]) ,0.0);
-			//~ DELTA[t]=( CFsp -CFrate[t]);
 			DELTA[t]=( CFsp -CFrate[t])*Werr2[t];
 
 			// calculate PC activity in final trial

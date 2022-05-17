@@ -21,8 +21,6 @@ void calc_GCpattern_theta_gain_DS(struct presyn_2pools W[], arma::mat& MFpattern
 	for (i=0; i<N; i++) {
 		for (j=0; j<W[i].num; j++) {
 			for (k = 0; k < PP; k++) {
-				//~ W[i].x1p[j][k]=1.0/(1.0+W[i].U1[j]*(1.0-W[i].pf1[j])*W[i].tauD1[j]*MFpatterns.at(W[i].idx[j],k));
-				//~ W[i].x2p[j][k]=1.0/(1.0+W[i].U2[j]*(1.0-W[i].pf2[j])*W[i].tauD2[j]*MFpatterns.at(W[i].idx[j],k));
 				W[i].x1p[j][k]=1.0/(1.0+W[i].alpha1[j]*MFpatterns.at(W[i].idx[j],k));
 				W[i].x2p[j][k]=1.0/(1.0+W[i].alpha2[j]*MFpatterns.at(W[i].idx[j],k));
 			}
@@ -36,7 +34,6 @@ void calc_GCpattern_theta_gain_DS(struct presyn_2pools W[], arma::mat& MFpattern
 			hGCpatterns.at(i,k)=0;
 			for (j=0; j<W[i].num; j++) {
 				// phasic contribution
-				//~ hGCpatterns.at(i,k)+=MFpatterns.at(W[i].idx[j],k)*( W[i].strgth1[j]*W[i].x1p[j][k]*W[i].U1[j] + W[i].strgth2[j]*W[i].x2p[j][k]*W[i].U2[j] );
 				hGCpatterns.at(i,k)+=MFpatterns.at(W[i].idx[j],k)*( W[i].WU1[j]*W[i].x1p[j][k] + W[i].WU2[j]*W[i].x2p[j][k] );
 			}
 			j=k+i*PP;
@@ -134,7 +131,7 @@ void calc_GCpattern_theta_gain_DS(struct presyn_2pools W[], arma::mat& MFpattern
 		a2=b2=e2=f2=0;
 		j2=0;
 		for (k = 0; k < PP; k++) {
-			GCpatterns.at(i,k)=std::max(hGCpatterns.at(i,k)-theta[i],0.0); //+sqrt(dt)*gsl_ran_gaussian_ziggurat (r,0.1);
+			GCpatterns.at(i,k)=std::max(hGCpatterns.at(i,k)-theta[i],0.0);
 			a+=GCpatterns.at(i,k);
 			b+=GCpatterns.at(i,k)*GCpatterns.at(i,k);
 			a2+=GCpatterns.at(i,k);
@@ -151,8 +148,6 @@ void calc_GCpattern_theta_gain_DS(struct presyn_2pools W[], arma::mat& MFpattern
 	double avrgGC_tot=a/double(N*PP);
 
 	// renormalise GC steady state firing rates
-//	double GCgain=GCtarget/(e/double(j));
-//	double GCgain=GCtarget/avrgGC_tot;
 	for (i = 0; i < N; i++) {
 		if(FLAGS.gain==0)		GCgain[i]=GCtarget/avrgGC_tot;
 		else if(FLAGS.gain==1)	GCgain[i]=GCtarget/avrgGC[i];

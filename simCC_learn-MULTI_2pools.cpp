@@ -1,14 +1,3 @@
-#include <sstream>
-#include <string>
-#include <fstream>
-#include <iostream>
-#include <iomanip>
-#include <cstdlib>
-#include <cmath>
-#include <limits>
-#include <float.h>
-#include <vector>
-#include <algorithm>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_cdf.h>
@@ -34,7 +23,6 @@ struct presyn_2pools {
 	double * U2; double * tauD2; double * pf2;
 	double * alpha1;	double * WU1; double * Upf1;
 	double * alpha2;	double * WU2; double * Upf2;
-	double ** tsyn1; double ** tsyn2;
 	int num;
 };
 struct cluster_struct {
@@ -44,7 +32,7 @@ struct cluster_struct {
 };
 struct flags {
 	int MF_STP,trans,trans_dum,gain,threshold,pattern,groups;
-	int GoC,driver,Udistrb,mode,cuttsyn,tsignal,cutGC,normGC;
+	int GoC,driver,Udistrb,mode,cutGC;
 };
 struct netpara {
 	int N,M,MFSYN,NSYN,Ncl,PP;
@@ -70,8 +58,6 @@ struct synpara {
 #include "headers/generate_ratePv_correlations.h"
 #include "headers/calc_GCpattern_theta_gain_DS.h"
 #include "headers/learn_weights_DS.h"
-#include "headers/calc_Tdim.h"
-#include "headers/calc_Ddim.h"
 #include "headers/rtnorm.cpp"
 
 int main (int argc, char* argv[]) {
@@ -145,11 +131,6 @@ int main (int argc, char* argv[]) {
     else if (gaincontrol.compare("no") == 0) 				FLAGS.gain=3;
     else {std::cerr <<"Bad gaincontrol string. \n";exit(EXIT_FAILURE);}
 
-    if (normGCs.compare("on") == 0) 			FLAGS.normGC=1;
-    else if (normGCs.compare("off") == 0) 		FLAGS.normGC=0;
-    else {std::cerr <<"Bad gaincontrol string. \n";exit(EXIT_FAILURE);}
-
-
     if (Groups.compare("2SYN_2MF") == 0)	 		FLAGS.groups=5;
     else if (Groups.compare("TOY_5MF") == 0)		FLAGS.groups=55;
     else {std::cerr <<"Bad Groups string: "<< Groups <<" \n";exit(EXIT_FAILURE);}
@@ -180,51 +161,10 @@ int main (int argc, char* argv[]) {
     else if (Golgi.compare("off") == 0) 	FLAGS.GoC=0;
     else {std::cerr <<"Bad Golgi string. \n";exit(EXIT_FAILURE);}
 
-    if 		(Tsignal.compare("Gauss") == 0) 		FLAGS.tsignal=0;
-    else if (Tsignal.compare("delta") == 0) 		FLAGS.tsignal=1;
-    else {std::cerr <<"Bad Tsignal string. \n";exit(EXIT_FAILURE);}
-
-    if (cuttsyn.compare("no") == 0)				FLAGS.cuttsyn=0;
-    else if (cuttsyn.compare("bounds") == 0) 	FLAGS.cuttsyn=1;
-    else if (cuttsyn.compare("cutS") == 0)		FLAGS.cuttsyn=2;
-    else if (cuttsyn.compare("cutD") == 0)		FLAGS.cuttsyn=3;
-    else if (cuttsyn.compare("cutSLOW") == 0)	FLAGS.cuttsyn=4;
-    else if (cuttsyn.compare("cutFAST") == 0)	FLAGS.cuttsyn=5;
-    else if (cuttsyn.compare("cutD_AND_cutFAST") == 0)	FLAGS.cuttsyn=35;
-    else {std::cerr <<"Bad Cuttsyn string. \n";exit(EXIT_FAILURE);}
-
     if (cutGC.compare("no") == 0)				FLAGS.cutGC=0;
     else if (cutGC.compare("above") == 0) 		FLAGS.cutGC=1;
     else if (cutGC.compare("below") == 0)		FLAGS.cutGC=2;
     else {std::cerr <<"Bad cutGC string. \n";exit(EXIT_FAILURE);}
-
-    //~ if(FLAGS.mode==6 && FLAGS.Udistrb==0) {std::cerr <<"Set Udistrb= 'yes' in order to run 'MF_U_corr' option. \n";exit(EXIT_FAILURE);}
-
-	if(FLAGS.cuttsyn==1){
-		std::cout << std::endl;
-		std::cout << "cutting tsyn from " <<  tsyncut_lo << "s to " << tsyncut_hi << "s" << std::endl;
-	}
-	else if(FLAGS.cuttsyn==2){
-		std::cout << std::endl;
-		std::cout << "setting supporter synapses to steady state" << std::endl;
-	}
-	else if(FLAGS.cuttsyn==3){
-		std::cout << std::endl;
-		std::cout << "setting driver synapses to steady state" << std::endl;
-	}
-	else if(FLAGS.cuttsyn==4){
-		std::cout << std::endl;
-		std::cout << "setting slow pools to steady state" << std::endl;
-	}
-	else if(FLAGS.cuttsyn==5){
-		std::cout << std::endl;
-		std::cout << "setting fast pools to steady state" << std::endl;
-	}
-	else if(FLAGS.cuttsyn==35){
-		std::cout << std::endl;
-		std::cout << "setting driver synapses AND all fast pools to steady state" << std::endl;
-	}
-	std::cout << std::endl;
 
 	// if reduced driver/supporter model is chosen, set driver flag correspondingly
 	if(FLAGS.groups==5){
@@ -247,9 +187,9 @@ int main (int argc, char* argv[]) {
 	if(Ntrials<2){
 		Tlearn=1.1;
 	}
-	// if GoC-GC synapses exist:
+	// with GoC, use longer baseline time-interval
 	if(FLAGS.GoC==1)	{
-		Tpre=Tpre+0.2;		// use longer baseline time-interval
+		Tpre=Tpre+0.2;
 		std::cout<< std::endl;
 		std::cout<< "Reccurent Golgi inputs turned on. Using Tpre = "<<Tpre << std::endl;
 	}
@@ -267,22 +207,17 @@ int main (int argc, char* argv[]) {
 
 	//	variables
 	double err_final,JI;
-	//~ double xtrans1,xtrans2,expfac1,expfac2;
-	double Tavrg,Gavrg,CLavrg,hGCpeak,GCpeak,Dim_GCt,Dim_MF,Dim_GCss,Dim_GConset,Dim_GCtrans,B1;
+	double Tavrg,Gavrg,CLavrg,B1;
 	double MF_avrg_D,MF_avrg_S,MF_std_D,MF_std_S;
 	double MF_avrg_CL[5],MF_std_CL[5];
 	double nuD,sigD,nuS,sigS;
-	double a,b,c,d;
-	int i,j,k,m,n,t,idxS,idxD,idxC0,idxC1,idxC2,Uprobidx,inidx,actidx;
-	int tt,kk,pp,pp2,ns,np,rr,tsvd,tcut,tchg1,tchg2;
-	bool bool_time,bool_tfive,bool_tten,bool_tcut;
-
-	const double ttshift=0.1;					// time-point of transient evaluation
+	double a,b;
+	int i,j,k,m,n,t,idxS,idxD,Uprobidx,inidx;
+	int tt,kk,ns,np,tcut,tchg1,tchg2;
+	bool bool_tfive,bool_tten,bool_tcut;
 
 	vector<double> delays = {0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7};
 	int Ndelays=7;
-	//~ vector<double> delays = {0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.01};
-	//~ int Ndelays=8;
 
 	// for bayesian learning
 	vector<double> interv_min = {0.025, 0.05, 0.1, 0.2, 0.3};
@@ -305,19 +240,6 @@ int main (int argc, char* argv[]) {
 	//~ const double sigSmax=60,sigSmin=3;
 	const double nuSmax=100,nuSmin=5;
 	const double sigSmax=70,sigSmin=3;
-
-	// time-window for SVD
-	const int tfrac=5;
-	double tsvd_start=0;								// 100ms before onset
-	const double tsvd_end=duration;						// 1s after onset
-	// use longer baseline time-interval whith recurrent golgi cells
-	if(FLAGS.GoC==1){
-		tsvd_start=0.2;
-	}
-	const int SVD_tsteps=(tsvd_end-tsvd_start)/(dt*tfrac);	// *tfrac : downsampling by factor tfrac
-
-	const int ttsvd_start=int(tsvd_start/dt);
-	const int ttsvd_end=int(tsvd_end/dt);
 
 	// time-window for GC transient cutting
 	const int tcutfrac=10;
@@ -350,7 +272,6 @@ int main (int argc, char* argv[]) {
 	J.strgth=new double [N];
 	double theta[N];
 	std::vector <double> dummyD;
-	std::vector <int> dummy;
 	std::vector <size_t> idx_sorted;
 	std::vector <int> drivers,supporters;
 	std::vector <int> D_synID,S_synID;
@@ -362,10 +283,7 @@ int main (int argc, char* argv[]) {
 	arma::mat MFpatterns_adjust(M,PP);
 	arma::mat MFpatterns_preCS(M,PP);
 	arma::mat MFpatterns_CS(M,PP);
-	arma::mat GCinT(N, SVD_tsteps);
 	arma::mat GCpatterns(N,PP);
-	arma::mat GCpatterns_onset(N, PP);		arma::mat hGC_onset(N, PP);
-	arma::mat GCpatterns_trans(N, PP);		arma::mat hGC_trans(N, PP);
 
 	arma::vec Time(CUT_tsteps);
 	arma::colvec GCmax(N);
@@ -374,11 +292,9 @@ int main (int argc, char* argv[]) {
 
 	double PC[BINS];
 	double GC[N],GCm[N],GCgain[N],hGC[N];
-	double MF[M],MFm[M];
+	double MF[M];
 	double GoC,GoCm;
-	double MLIsum,GCavrg,hGCavrg,hGCvar,MLI;
-	double tsyn_avrg[Ncl][2],tsyn_std[Ncl][2],foff[Ncl][2],tempDOUBLE[Ncl][2];
-	int tempINT[Ncl][2];
+	double GCavrg,hGCavrg,hGCvar,MLI;
 
 	double** MF_Tinput=new double* [M];
 	for(i= 0; i < M; i++){
@@ -411,7 +327,6 @@ int main (int argc, char* argv[]) {
 	std::ofstream GC_file(path+string("GC.dat"));						if (!GC_file) exit(EXIT_FAILURE);
 	std::ofstream MF_file(path+string("MF.dat"));						if (!MF_file) exit(EXIT_FAILURE);
 	std::ofstream STP_file(path+string("MFGC_STP.dat"));				if (!STP_file) exit(EXIT_FAILURE);
-	//~ std::ofstream STP_NU_file(path+string("STP_NU.dat"));				if (!STP_NU_file) exit(EXIT_FAILURE);
 	std::ofstream MLI_file(path+string("MLI.dat"));						if (!MLI_file) exit(EXIT_FAILURE);
 	std::ofstream GoC_file(path+string("GoC.dat"));						if (!GoC_file) exit(EXIT_FAILURE);
 	std::ofstream CF_file(path+string("CF.dat"));						if (!CF_file) exit(EXIT_FAILURE);
@@ -419,9 +334,7 @@ int main (int argc, char* argv[]) {
 	std::ofstream time_learn_file(path+string("time_learn.dat"));		if (!time_learn_file) exit(EXIT_FAILURE);
 	std::ofstream STPpara_file(path+string("STPpara.dat"));				if (!STPpara_file) exit(EXIT_FAILURE);
 	std::ofstream GCtrans_file(path+string("GCtrans.dat"));				if (!GCtrans_file) exit(EXIT_FAILURE);
-	std::ofstream GCnorm_global_file(path+string("GCnorm_global.dat"));	if (!GCnorm_global_file) exit(EXIT_FAILURE);
 	std::ofstream timeGCtrans_file(path+string("timeGCtrans.dat"));		if (!timeGCtrans_file) exit(EXIT_FAILURE);
-	std::ofstream sparse_file(path+string("sparse.dat"));			if (!sparse_file) exit(EXIT_FAILURE);
 
 	std::ofstream err_final_file(path+string("err_final.dat"));			if (!err_final_file) exit(EXIT_FAILURE);
 	std::ofstream PC_010_file(path+string("PC_final_010.dat"));			if (!PC_010_file) exit(EXIT_FAILURE);
@@ -439,25 +352,17 @@ int main (int argc, char* argv[]) {
 	std::ofstream PC_bayes_4_file(path+string("PC_bayes_200400.dat"));	if (!PC_bayes_4_file) exit(EXIT_FAILURE);
 	std::ofstream PC_bayes_5_file(path+string("PC_bayes_300500.dat"));	if (!PC_bayes_5_file) exit(EXIT_FAILURE);
 
-	//~ std::ofstream htarget_file(path+string("htarget.dat"));				if (!htarget_file) exit(EXIT_FAILURE);
 	std::ofstream htarget_BINS_file(path+string("htarget_BINS.dat"));	if (!htarget_BINS_file) exit(EXIT_FAILURE);
 	std::ofstream theta_file(path+string("theta.dat"));						if (!theta_file) exit(EXIT_FAILURE);
 	std::ofstream J_file(path+string("J.dat"));							if (!J_file) exit(EXIT_FAILURE);
 	std::ofstream Jidx_file(path+string("Jidx.dat"));					if (!Jidx_file) exit(EXIT_FAILURE);
-	std::ofstream trans_file(path+string("trans.dat"));					if (!trans_file) exit(EXIT_FAILURE);
-	std::ofstream tsyn_file(path+string("teff.dat"));					if (!tsyn_file) exit(EXIT_FAILURE);
-	std::ofstream tsyndistrb_file(path+string("teff_distrb.dat"));		if (!tsyndistrb_file) exit(EXIT_FAILURE);
-	std::ofstream Ampdistrb_file(path+string("Amp_distrb.dat"));		if (!Ampdistrb_file) exit(EXIT_FAILURE);
-	std::ofstream tsyn_MFsort_file(path+string("teff_MFsort.dat"));		if (!tsyn_MFsort_file) exit(EXIT_FAILURE);
-	//~ std::ofstream tsyn_file_D(path+string("teff_D.dat"));				if (!tsyn_file_D) exit(EXIT_FAILURE);
-	std::ofstream dim_file(path+string("dimension.dat"));				if (!dim_file) exit(EXIT_FAILURE);
 	std::ofstream learnparam_file(path+string("learnparam.dat"));		if (!learnparam_file) exit(EXIT_FAILURE);
 	std::ofstream stats_file(path+string("stats.dat"));					if (!stats_file) exit(EXIT_FAILURE);
 	std::ofstream flags_file(path+string("flags.dat"));					if (!flags_file) exit(EXIT_FAILURE);
 
 
-	flags_file << 	FLAGS.MF_STP << "\t"<< FLAGS.threshold << "\t"<< FLAGS.pattern << "\t"<< FLAGS.gain << "\t"<< FLAGS.normGC << "\t"<< FLAGS.groups << "\t"<< FLAGS.driver<< "\t"<<
-					FLAGS.trans<< "\t"<< FLAGS.Udistrb<< "\t"<< FLAGS.mode << "\t"<< FLAGS.GoC << "\t"<<  FLAGS.tsignal << "\t"<< FLAGS.cuttsyn << "\t"<<  FLAGS.cutGC <<std::endl;
+	flags_file << 	FLAGS.MF_STP << "\t"<< FLAGS.threshold << "\t"<< FLAGS.pattern << "\t"<< FLAGS.gain << "\t"<< 0 << "\t"<< FLAGS.groups << "\t"<< FLAGS.driver<< "\t"<<
+					FLAGS.trans<< "\t"<< FLAGS.Udistrb<< "\t"<< FLAGS.mode << "\t"<< FLAGS.GoC << "\t"<<  1 << "\t"<< 0 << "\t"<<  FLAGS.cutGC <<std::endl;
 
 	arma::vec MF_U_CORR = arma::linspace<arma::vec>(-0.99, 0.99, Npara);
 	arma::vec CI_ARR = arma::logspace<arma::vec>(-1, 3, Npara);
@@ -475,32 +380,32 @@ int main (int argc, char* argv[]) {
 	NETPARA.theta_global=theta_global;
 
 	if(FLAGS.mode==6){
-		cout << "Varying nu-p correlation" << "\n";
+		std::cout << "Varying nu-p correlation" << "\n";
 	}
 	else if(FLAGS.mode==7){
-		cout << "Varying JI" << "\n";
+		std::cout << "Varying JI" << "\n";
 		Npara=CI_ARR.n_elem;
 	}
 	else if(FLAGS.mode==8){
-		cout << "Varying Ntrials" << "\n";
+		std::cout << "Varying Ntrials" << "\n";
 		Npara=7;
 	}
 	else if(FLAGS.mode==77){
-		cout << "Bayesian learning" << "\n";
+		std::cout << "Bayesian learning" << "\n";
 		//~ Npara=1;	// only one parameter set when in sample mode
 		CFsp=CFsp_bayes;
 	}
 	else if(FLAGS.mode==99){
-		cout << "Sample eye-blink learning" << "\n";
+		std::cout << "Sample eye-blink learning" << "\n";
 		Npara=1;	// only one parameter set when in sample mode
 	}
 	else if(FLAGS.mode==88){
-		cout << "Scan over 2D parameter space" << "\n";
+		std::cout << "Scan over 2D parameter space" << "\n";
 		Npara2=Npara;	// only one parameter set when in sample mode
 	}
 	// **********************************
 	// start Npara loop
-	for (pp = 0; pp < Npara; pp++){
+	for (int pp = 0; pp < Npara; pp++){
 
 		//~ nuD=50;
 		//~ sigD=60;
@@ -534,7 +439,7 @@ int main (int argc, char* argv[]) {
 		if(FLAGS.mode==8) Ntrials=NTRIALS_ARR(pp);
 		JI=cI;
 
-	for (pp2 = 0; pp2 < Npara2; pp2++){
+	for (int pp2 = 0; pp2 < Npara2; pp2++){
 
 		if(FLAGS.mode==88){
 			nuD= (nuDmax-nuDmin)/double(Npara) *pp+nuDmin;			// check pp, pp2 !!
@@ -543,8 +448,8 @@ int main (int argc, char* argv[]) {
 			//~ sigS= (sigSmax-sigSmin)/double(Npara) *pp2+sigSmin;
 		}
 
-		cout << "********************* \n";
-		cout << "Parameter set number " << pp*Npara2+pp2+1<< "\n";
+		std::cout << "********************* \n";
+		std::cout << "Parameter set number " << pp*Npara2+pp2+1<< "\n";
 		//~ if(FLAGS.mode<6 || FLAGS.mode==88){
 		if(FLAGS.groups==5){
 			std::cout << "nuD = " << nuD  << "\t"<< "sigD = " << sigD << "\t"<< "nuS = " << nuS<< "\t"<< "sigS = " << sigS << "\t"<< "MFUcorr = " << MFUcorr << "\t "<< "JI = " << JI << "\t"<< "number of steps = " << Ntrials << "\n";
@@ -555,7 +460,7 @@ int main (int argc, char* argv[]) {
 					for (i = 0; i < Ncl; i++) {
 						std::cout 	<< "nu0 = " << round(100* 0.5*(NUlims[Ncl-i]+NUlims[Ncl-i-1]) )/100.0  << "\t"<< "sig0 = " << round(100* (NUlims[Ncl-i]-NUlims[Ncl-i-1])/sqrt(12) )/100.0 << "\t";
 					}
-					std::cout	<< "MFUcorr = " << MFUcorr << "\t"<< "cI = " << cI << "\n";
+					std::cout	<< "MFUcorr = " << MFUcorr << "\t"<< "JI = " << cI << "\n";
 				}
 				else{
 					std::cout 	<< "nu0 = " << nu0  << "\t"<< "sig0 = " << sig0 << "\t"
@@ -563,18 +468,18 @@ int main (int argc, char* argv[]) {
 							<< "nu2 = " << nu2	<< "\t"<< "sig2 = " << sig2 << "\t"
 							<< "nu3 = " << nu3	<< "\t"<< "sig3 = " << sig3 << "\t"
 							<< "nu4 = " << nu4	<< "\t"<< "sig4 = " << sig4 << "\t"
-							<< "MFUcorr = " << MFUcorr << "\t"<< "cI = " << cI << "\n";
+							<< "MFUcorr = " << MFUcorr << "\t"<< "JI = " << cI << "\n";
 				}
 			}
 			else{
-				std::cout << "nuD = " << nuD  << "\t"<< "sigD = " << sigD << "\t"<< "nuS = " << nuS<< "\t"<< "sigS = " << sigS << "\t"<< "MFUcorr = " << MFUcorr << "\t"<< "cI = " << cI << "\t"<< "number of steps = " << Ntrials << "\n";
+				std::cout << "nuD = " << nuD  << "\t"<< "sigD = " << sigD << "\t"<< "nuS = " << nuS<< "\t"<< "sigS = " << sigS << "\t"<< "MFUcorr = " << MFUcorr << "\t"<< "JI = " << cI << "\t"<< "number of steps = " << Ntrials << "\n";
 			}
 		}
 
 	// start Nreal loop
-	for (rr = 0; rr < Nreal; rr++){
-		if( ( (rr+1) % 5) ==0) cout << "Realisation number " << rr+1 << "\n";
-		MF_avrg=MF_avrg_D=nuD;	MF_std=MF_std_D=sigD;
+	for (int rr = 0; rr < Nreal; rr++){
+		if( ( (rr+1) % 5) ==0) std::cout << "Realisation number " << rr+1 << "\n";
+		MF_avrg_D=nuD;			MF_std_D=sigD;
 		MF_avrg_S=nuS;			MF_std_S=sigS;
 		MF_avrg_CL[0]=nu0;		MF_std_CL[0]=sig0;
 		MF_avrg_CL[1]=nu1;		MF_std_CL[1]=sig1;
@@ -590,20 +495,18 @@ int main (int argc, char* argv[]) {
 		supporters.clear();
 
 	// **********************************
-	//	generate MF patterns			CHECK THIS FOR UNIFORM AND OTHER DISTRIBUTIONS
+	//generate MF patterns
 	// generate group identities
 	generate_MF_groups_DS(MFgroup, CL, grouplims, drivers, supporters, NETPARA, FLAGS, r);
 
 	// for threshold and gain adjustment
-	generate_MF_patterns_DS(MFpatterns_adjust, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg, MF_std, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
-	//~ generate_MF_patterns_DS(MFpatterns_adjust, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg, MF_std, MF_avrg_D, MF_std_D, 60, 0, pact, NETPARA, FLAGS, r);
+	generate_MF_patterns_DS(MFpatterns_adjust, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
 
 	// pre CS
-	generate_MF_patterns_DS(MFpatterns_preCS, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg, MF_std, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
+	generate_MF_patterns_DS(MFpatterns_preCS, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
 
 	// during CS
-	generate_MF_patterns_DS(MFpatterns_CS, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg, MF_std, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
-	//~ generate_MF_patterns_DS(MFpatterns_CS, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg, MF_std, MF_avrg_D, MF_std_D, 60, 0, pact, NETPARA, FLAGS, r);
+	generate_MF_patterns_DS(MFpatterns_CS, MFgroup, MF_avrg_CL, MF_std_CL, CL, NUlims, grouplims, drivers, supporters, MF_avrg_D, MF_std_D, MF_avrg_S, MF_std_S, pact, NETPARA, FLAGS, r);
 
 	// **********************************
 	//	generate connectivity
@@ -612,7 +515,6 @@ int main (int argc, char* argv[]) {
 	// -----------------------------------
 	// generate uniform or beta release probability distribution
 	// -----------------------------------
-	//~ std::vector <size_t> idx_sorted;
 	if(FLAGS.Udistrb>1){
 		if(FLAGS.Udistrb==2){
 			for (i = 0; i < NSYN_2; i++) Utoy_slow[i]=gsl_ran_flat(r, 0.1, 0.9);
@@ -623,8 +525,6 @@ int main (int argc, char* argv[]) {
 			b=a*( 1.0/0.5 -1);
 			for (i = 0; i < NSYN_2; i++) Utoy_slow[i]=gsl_ran_beta(r, a, b);
 		}
-		//~ for (i = 0; i < 20; i++) std::cout<< Utoy_slow[i]<< endl;
-		//~ std::cout <<"\n";
 		for (i = 0; i < NSYN_2; i++) 	dummyD.push_back(Utoy_slow[i]);
 		idx_sorted=sort_indices(dummyD);
 		for (i = 0; i < NSYN_2; i++) 	Utoy_slow[i]=dummyD[idx_sorted[i]];
@@ -820,7 +720,7 @@ int main (int argc, char* argv[]) {
 		}
 	}
 
-	idxS=idxD=idxC0=idxC1=idxC2=0;
+	idxS=idxD=0;
 	for (k=0; k<Ncl; k++) {
 		CL[k].idxC=0;
 	}
@@ -860,24 +760,20 @@ int main (int argc, char* argv[]) {
 			W[i].strgth1[j]=Mdata[m][0];
 			W[i].U1[j]=Mdata[m][1];
 			W[i].tauD1[j]=Mdata[m][2];
-			//~ W[i].tauF1[j]=Mdata[m][3];
 			W[i].pf1[j]=Mdata[m][4];
 			W[i].strgth2[j]=Mdata[m][5];
 			W[i].U2[j]=Mdata[m][6];
 			W[i].tauD2[j]=Mdata[m][7];
-			//~ W[i].tauF2[j]=Mdata[m][8];
 			W[i].pf2[j]=Mdata[m][9];
 
 			// draw release prob from distribution
 			if(FLAGS.Udistrb==1 && FLAGS.groups==55){
 				W[i].U1[j]=Utoy_slow[Uprobidx];
-				//~ W[i].U2[j]=Mdata[m][6];
 				W[i].U2[j]=Utoy_slow[Uprobidx]*2.0/3.0;
 				W[i].strgth2[j]=Ntoy_fast[Uprobidx];
 			}
 			else if(FLAGS.Udistrb>1){
 				W[i].U1[j]=Utoy_slow[Uprobidx];
-				//~ W[i].U2[j]=Mdata[m][6];
 				W[i].U2[j]=Utoy_slow[Uprobidx]*2.0/3.0;
 				W[i].strgth2[j]=Ntoy_fast[Uprobidx];
 			}
@@ -907,107 +803,6 @@ int main (int argc, char* argv[]) {
 //	**********************************
 // 	calculation of GC patterns & adjust thresholds and gains
 	calc_GCpattern_theta_gain_DS(W, MFpatterns_adjust, GCpatterns, theta, GCgain, Tavrg, Gavrg, hGCavrg, hGCvar, CLavrg, NETPARA, FLAGS, r);
-
-//------------------------------------------------------------------------
-// 	calculate tau_effs for target patterns
-//------------------------------------------------------------------------
-	// calculate tsyn statistics according to SYN identity
-	for (n=0; n<Ncl; n++) {
-		tempINT[n][0]=0; tempINT[n][1]=0;
-		tempDOUBLE[n][0]=0; tempDOUBLE[n][1]=0;
-	}
-	for (i=0; i<N; i++) {
-		for (j=0; j<W[i].num; j++) {
-			for (k=0; k<PP; k++) {
-				W[i].tsyn1[j][k]=W[i].tauD1[j]*W[i].x1p[j][k];
-				W[i].tsyn2[j][k]=W[i].tauD2[j]*W[i].x2p[j][k];
-
-				// slow pools
-				for (n=0; n<Ncl; n++) {
-					if( W[i].Gidx[j]==n && (W[i].tsyn1[j][k]<W[i].tauD1[j]) ){
-						tempINT[n][0]++;
-						tempDOUBLE[n][0]+=W[i].tsyn1[j][k];
-						tempDOUBLE[n][1]+=W[i].tsyn1[j][k]*W[i].tsyn1[j][k];
-					}
-					if( W[i].Gidx[j]==n )	tempINT[n][1]++;
-				}
-			}
-		}
-	}
-
-	for (n=0; n<Ncl; n++) {
-		tsyn_avrg[n][0]=tempDOUBLE[n][0]/double(tempINT[n][0]);
-		tsyn_std[n][0]=sqrt(tempDOUBLE[n][1]/double(tempINT[n][0]) - tsyn_avrg[n][0]*tsyn_avrg[n][0]);
-		// number of inactive MFs
-		foff[n][0]=1.0-double(tempINT[n][0])/double(tempINT[n][1]);
-	}
-
-	// calculate tsyn statistics according to MF identity
-	for (n=0; n<Ncl; n++) {
-		tempINT[n][0]=0; tempINT[n][1]=0;
-		tempDOUBLE[n][0]=0; tempDOUBLE[n][1]=0;
-	}
-	for (i=0; i<N; i++) {
-		for (j=0; j<W[i].num; j++) {
-			for (k=0; k<PP; k++) {
-				// slow pools
-				for (n=0; n<Ncl; n++) {
-					if( MFgroup[W[i].idx[j]]==n && (W[i].tsyn1[j][k]<W[i].tauD1[j]) ){
-						tempINT[n][0]++;
-						tempDOUBLE[n][0]+=W[i].tsyn1[j][k];
-						tempDOUBLE[n][1]+=W[i].tsyn1[j][k]*W[i].tsyn1[j][k];
-					}
-					if( MFgroup[W[i].idx[j]]==n )	tempINT[n][1]++;
-				}
-			}
-		}
-	}
-	for (n=0; n<Ncl; n++) {
-		tsyn_avrg[n][1]=tempDOUBLE[n][0]/double(tempINT[n][0]);
-		tsyn_std[n][1]=sqrt(tempDOUBLE[n][1]/double(tempINT[n][0]) - tsyn_avrg[n][1]*tsyn_avrg[n][1]);
-		// number of inactive MFs
-		foff[n][1]=1.0-double(tempINT[n][0])/double(tempINT[n][1]);
-	}
-
-//------------------------------------------------------------------------
-// 	calculate GC inputs and firing rates at transient onset
-//------------------------------------------------------------------------
-	//~ for (i=0; i<N; i++) {
-		//~ for (k = 0; k < PP; k++) {
-			//~ n=k+1;
-			//~ if(n> (PP-1)) n=0;
-			//~ //	pre-synaptic inputs of GC i
-			//~ hGC_onset.at(i,k)=0;
-			//~ for (j=0; j<W[i].num; j++) {
-				//~ // phasic contribution
-				//~ // hGC_onset.at(i,k)+=MFpatterns_CS.at(W[i].idx[j],n)*( W[i].strgth1[j]*W[i].x1p[j][k]*W[i].U1[j] + W[i].strgth2[j]*W[i].x2p[j][k]*W[i].U2[j] );
-				//~ hGC_onset.at(i,k)+=MFpatterns_CS.at(W[i].idx[j],n)*( W[i].WU1[j]*W[i].x1p[j][k] + W[i].WU2[j]*W[i].x2p[j][k] );
-			//~ }
-			//~ GCpatterns_onset.at(i,k)=GCgain[i]*std::max(hGC_onset.at(i,k)-theta[i],0.0);
-		//~ }
-	//~ }
-//------------------------------------------------------------------------
-// 	calculate GC inputs and firing rates at different times during transient
-// 	only valid for depletion only model (without Golgi)
-//------------------------------------------------------------------------
-	//~ for (i=0; i<N; i++) {
-		//~ for (k = 0; k < PP; k++) {
-			//~ n=k+1;
-			//~ if(n> (PP-1)) n=0;
-			//~ //	pre-synaptic inputs of GC i
-			//~ hGC_trans.at(i,k)=0;
-			//~ for (j=0; j<W[i].num; j++) {
-				//~ expfac1=exp(-ttshift/W[i].tsyn1[j][n]);
-				//~ expfac2=exp(-ttshift/W[i].tsyn2[j][n]);
-				//~ xtrans1=W[i].x1p[j][n]*(1.0-expfac1) + W[i].x1p[j][k]*expfac1;
-				//~ xtrans2=W[i].x2p[j][n]*(1.0-expfac2) + W[i].x2p[j][k]*expfac2;
-				//~ // phasic contribution (no desensitisation, no facilitation)
-				//~ // hGC_trans.at(i,k)+=MFpatterns_CS.at(W[i].idx[j],n)*( W[i].strgth1[j]*W[i].U1[j]*xtrans1 + W[i].strgth2[j]*W[i].U2[j]*xtrans2 );
-				//~ hGC_trans.at(i,k)+=MFpatterns_CS.at(W[i].idx[j],n)*( W[i].WU1[j]*xtrans1 + W[i].WU2[j]*xtrans2 );
-			//~ }
-			//~ GCpatterns_trans.at(i,k)=GCgain[i]*std::max(hGC_trans.at(i,k)-theta[i],0.0);
-		//~ }
-	//~ }
 
 //------------------------------------------------------------------------
 //	if simulation is run with Golgi feedback reset thresholds and calculate weights appropriately
@@ -1053,7 +848,7 @@ int main (int argc, char* argv[]) {
 //------------------------------------------------------------------------
 	for (k=0; k<Ndelays; k++) {
 
-		t=0;//=tt=kk=0;
+		t=0;
 		// 	generate MF input signal
 		ns=1;
 		// pre CS
@@ -1084,16 +879,13 @@ int main (int argc, char* argv[]) {
 //	*************************
 //  set initial conditions
 	bool_tten=bool_tfive=0;
-	tt=kk=tsvd=tcut=0;
-	hGCpeak=GCpeak=0;
-	bool_time=bool_tcut=0;
-	GCinT.zeros();
+	tt=kk=tcut=0;
+	bool_tcut=0;
 	arma::mat GC_trial(N, BINS);
 	arma::mat GCtrans(N, CUT_tsteps);
 
-	for (j=0; j<M; j++) 	MF[j]=MFm[j]=MF_Tinput[j][0];
+	for (j=0; j<M; j++) 	MF[j]=MF_Tinput[j][0];
 	for (i=0; i<N; i++) 	GC[i]=GCm[i]=GCpatterns.at(i,pstart);
-	MLIsum=0;
 
 	a=0;
 	for (i=0; i<N; i++) 	a+=GC[i];
@@ -1107,7 +899,6 @@ int main (int argc, char* argv[]) {
 	}
 
 	// set MF-GC synapses to steady state
-	// MF-to-GC STP
 	if(FLAGS.MF_STP>0){
 		for (i=0; i<N; i++) {
 			for (j=0; j<W[i].num; j++) {
@@ -1122,10 +913,8 @@ int main (int argc, char* argv[]) {
 //	compute basis functions
 //	*************************
 	t=-1;
-	//~ bool bool_tten;
 	while(t < MAX_data) {
 		t++;
-		bool_time=( (t % tfrac)==0);
 		bool_tten=( (t % 10)==0);
 		bool_tfive=( (t % 5)==0);
 		bool_tcut=( (t % tcutfrac)==0);
@@ -1134,7 +923,6 @@ int main (int argc, char* argv[]) {
 		for (j=0; j<M; j++) {
 			MF[j]=MF_Tinput[j][t];
 		}
-//		cout << pp << "\t" << t << endl;
 		for (i=0; i<N; i++)	{
 			GCm[i]=GC[i];
 			for (j=0; j<W[i].num; j++){
@@ -1152,8 +940,6 @@ int main (int argc, char* argv[]) {
 		GoC=GCavrg;
 
 		// evolve GCs
-		c=d=0;
-		actidx=0;
 		for (i=0; i<N; i++) {
 			//	pre-synaptic inputs of GC i
 			a=b=0;
@@ -1168,24 +954,15 @@ int main (int argc, char* argv[]) {
 				hGC[i]=a;
 			}
 			GC[i]=GCm[i]+dtGC*(-GCm[i] + GCgain[i]*std::max(hGC[i]-theta[i],0.0));
-			// instantaneous GCs
+			// uncomment for instantaneous GCs
 			//~ GC[i]=GCgain[i]*std::max(hGC[i]-theta[i],0.0);
-			c+=hGC[i];
-			d+=GC[i];
-			if(GC[i]>0.01) actidx++;
 		}
-		// average GC input and rate
-		c=c/double(N);
-		d=d/double(N);
-		if(c>hGCpeak) hGCpeak=c;
-		if(d>GCpeak) GCpeak=d;
 
 		// instantaneous MLIs
 		GCavrg=0;
 		for (i=0; i<N; i++) GCavrg+=GC[i];
 		GCavrg=GCavrg/double(N);
 		MLI=GCavrg;
-		if(t>ttpre) MLIsum+=MLI;
 
 		// MF-to-GC STP
 		if(FLAGS.MF_STP>0){
@@ -1207,68 +984,6 @@ int main (int argc, char* argv[]) {
 			}
 		}
 
-		// set both fast and slow synapse pools with tsyn > tsyncut to their steady state values; tsyn is calculated based on simplified depression-only model
-		if(FLAGS.cuttsyn==1){
-			for (i=0; i<N; i++) {
-				for (j=0; j<W[i].num; j++) {
-					tchg1=tchg2=0;
-					if( (W[i].tsyn1[j][ptarget]<tsyncut_hi) && (W[i].tsyn1[j][ptarget]>tsyncut_lo) ) {
-						tchg1=1;
-						W[i].x1[j]=1.0/(1.0+W[i].alpha1[j]*MF[W[i].idx[j]]);
-					}
-					if( (W[i].tsyn2[j][ptarget]<tsyncut_hi) && (W[i].tsyn2[j][ptarget]>tsyncut_lo) ){
-						tchg2=1;
-						W[i].x2[j]=1.0/(1.0+W[i].alpha2[j]*MF[W[i].idx[j]]);
-					}
-				}
-			}
-		}
-		else if(FLAGS.cuttsyn==2){
-			// supporter (only works for 2D-2S configuration)
-			for (i=0; i<N; i++) {
-				for (j=2; j<W[i].num; j++) {
-					W[i].x1[j]=1.0/(1.0+W[i].alpha1[j]*MF[W[i].idx[j]]);
-					W[i].x2[j]=1.0/(1.0+W[i].alpha2[j]*MF[W[i].idx[j]]);
-				}
-			}
-		}
-		else if(FLAGS.cuttsyn==3){
-			// driver (only works for 2D-2S configuration)
-			for (i=0; i<N; i++) {
-				for (j=0; j<2; j++) {
-					W[i].x1[j]=1.0/(1.0+W[i].alpha1[j]*MF[W[i].idx[j]]);
-					W[i].x2[j]=1.0/(1.0+W[i].alpha2[j]*MF[W[i].idx[j]]);
-				}
-			}
-		}
-		else if(FLAGS.cuttsyn==4){
-			// slow pools
-			for (i=0; i<N; i++) {
-				for (j=0; j<W[i].num; j++) {
-					W[i].x1[j]=1.0/(1.0+W[i].alpha1[j]*MF[W[i].idx[j]]);
-				}
-			}
-		}
-		else if(FLAGS.cuttsyn==5){
-			// fast pools
-			for (i=0; i<N; i++) {
-				for (j=0; j<W[i].num; j++) {
-					W[i].x2[j]=1.0/(1.0+W[i].alpha2[j]*MF[W[i].idx[j]]);
-				}
-			}
-		}
-		else if(FLAGS.cuttsyn==35){
-			// driver + all fast pools
-			for (i=0; i<N; i++) {
-				for (j=0; j<2; j++) {
-					W[i].x1[j]=1.0/(1.0+W[i].alpha1[j]*MF[W[i].idx[j]]);
-				}
-				for (j=0; j<W[i].num; j++) {
-					W[i].x2[j]=1.0/(1.0+W[i].alpha2[j]*MF[W[i].idx[j]]);
-				}
-			}
-		}
-
 		// write basis to file
 		if((rr==0) & (FLAGS.mode==99 || FLAGS.mode==77) & ((t-ttpre)*dt>=-0.1) ){
 			if (bool_tten){
@@ -1281,7 +996,6 @@ int main (int argc, char* argv[]) {
 				if (FLAGS.GoC==1){
 					GoC_file << GoC << std::endl;
 				}
-				sparse_file << double(actidx)/double(N) <<std::endl;
 			}
 			if (bool_tfive){
 
@@ -1291,15 +1005,12 @@ int main (int argc, char* argv[]) {
 				STP_file <<t*dt-Tpre 	<<"\t ";
 				for(i= 0; i < 50; i++) {
 					for(j= 0; j < W[i].num; j++) STP_file <<  W[i].WU1[j]*W[i].x1m[j] + W[i].WU2[j]*W[i].x2m[j] <<" ";
-					//~ for(j= 0; j < W[i].num; j++) STP_NU_file <<  (W[i].WU1[j]*W[i].x1m[j] + W[i].WU2[j]*W[i].x2m[j])*MF[W[i].idx[j]] <<" ";
 				}
 				STP_file << std::endl;
-				//~ STP_NU_file << std::endl;
 			}
 		}
 
 		if( (pp==0) & (pp2==0) & (rr==0) & (tt % int(dbint/dt)==0) & (kk<BINS) & ((t-ttpre)*dt>=-0.1) ) {
-//			std::cout << tt << "\t" << kk << std::endl;
 			time_learn_file << t*dt-Tpre << std::endl;
 		}
 
@@ -1308,23 +1019,11 @@ int main (int argc, char* argv[]) {
 			kk++;
 		}
 
-		if (bool_time){
-			if(t>= ttsvd_start && t< ttsvd_end){
-//				std::cout << t << "\t"<< t*dt << std::endl;
-				for(i= 0; i < N; i++) {
-					GCinT(i, tsvd)= GC[i];
-				}
-				tsvd++;
-			}
-		}
-
 		if (bool_tcut){
 			if(t> ttcut_start && t<= ttcut_end){
-				//~ std::cout << t << "\t"<< t*dt <<  "\t"<< tcut <<std::endl;
 				for(i= 0; i < N; i++) {
 					GCtrans.at(i, tcut)= GC[i];
 				}
-				//~ Time(tcut)=t*dt;
 				Time(tcut)=t*dt-Tpre;
 				tcut++;
 			}
@@ -1351,8 +1050,6 @@ int main (int argc, char* argv[]) {
 	//	*************************
 	//	cut GC basis (does not work with recurrent GoC)
 	//	*************************
-	//~ std::cout << GCtrans.n_rows << "\t"<< GCtrans.n_cols << std::endl;
-	//~ std::cout << GC_trial.n_rows << "\t"<< GC_trial.n_cols << std::endl;
 
 	// subtract GC steady state
 	for (i = 0; i < Nred; i++) {
@@ -1361,9 +1058,6 @@ int main (int argc, char* argv[]) {
 			GCtrans.at(i, j)=GCtrans.at(i, j)-a;
 		}
 	}
-	// find transient maxima with naive method
-	//~ GCmax=arma::max(arma::abs(GCtrans),1);
-	//~ arma::ucolvec pkidx=arma::index_max(arma::abs(GCtrans),1);
 
 	// find transient maxima based on zero crossings of derivative
 	arma::rowvec GCdiff(CUT_tsteps);
@@ -1377,81 +1071,22 @@ int main (int argc, char* argv[]) {
 		GCdiff=arma::diff(GCtrans.row(i));
 		// find zero crossings
 		tcr=arma::find(GCdiff % arma::shift( GCdiff, -1) <= 0) +1;
-		//~ std::cout<< tcr.n_rows << "\t" << tcr.n_cols<< std::endl;
 		// exclude zero crossings that are too late
 		for(j= (tcr.n_rows-1); j >=0; j--) {
 			if(Time(tcr(j))>tlate) tcr.shed_row(j);
 		}
-		//~ if(tcr.is_empty()){
-			//~ // if there are no peaks simply look for maximum
-			//~ GCmax(i)=arma::max(arma::abs(GCtrans.row(i)));
-			//~ pkidx(i)=arma::index_max(arma::abs(GCtrans.row(i)));
-			//~ npeaks(i)=0;
-		//~ }
-		//~ else{
-			//~ // if there are one or more peaks, choose the largest one
-			//~ arma::vec xx(tcr.n_elem);
-			//~ for (j = 0; j < tcr.n_elem; j++) {
-				//~ // vector of putative maxima
-				//~ xx(j)=std::abs( GCtrans(i,tcr(j)) );
-			//~ }
-			//~ // among putative maxima, find the largest one
-			//~ GCmax(i)=arma::max(xx);
-			//~ tmpidx=arma::index_max(xx);
-			//~ pkidx(i)=tcr(tmpidx);
-			//~ GCmax(i)=GCmax(i)*arma::sign(GCtrans(i,pkidx(i)));
-			//~ // if amplitude is negative and too small revert to default measure
-			//~ if(GCmax(i)<0 && (std::abs(GCmax(i))<ampsmall) ){
-				//~ GCmax(i)=arma::max(arma::abs(GCtrans.row(i)));
-				//~ pkidx(i)=arma::index_max(arma::abs(GCtrans.row(i)));
-			//~ }
-			//~ npeaks(i)=tcr.n_elem;
-		//~ }
 
 		// for the DS model this is sufficient
 		GCmax(i)=arma::max(arma::abs(GCtrans.row(i)));
 		pkidx(i)=arma::index_max(arma::abs(GCtrans.row(i)));
 		npeaks(i)=0;
-		//~ std::cout<< npeaks(i) << "\t" << GCmax(i) << "\t" << pkidx(i) << std::endl;
 	}
+
 	// normalise GC transients
 	for (i = 0; i < Nred; i++) {
 		for (j = 0; j < CUT_tsteps; j++) {
 			GCtrans.at(i, j)=GCtrans.at(i, j)/std::abs(GCmax(i));
 		}
-	}
-
-	if(FLAGS.normGC==1){
-		// find global GC peak (across all GCs)
-		arma::uvec pkidx_raw(Nred);
-		arma::colvec GCmax_raw(Nred);
-		for (i = 0; i <Nred; i++) {
-			// for the DS model this is sufficient
-			GCmax_raw(i)=arma::max(arma::abs(GC_trial.row(i)));
-			pkidx_raw(i)=arma::index_max(arma::abs(GC_trial.row(i)));
-			//~ std::cout<< GCmax_raw(i) << "\t" << pkidx_raw(i) << std::endl;
-		}
-		double GCmax_global=0;
-		//~ int pkidx_global,cellidx_global;
-		for (i = 0; i < Nred; i++) {
-			if(std::abs(GCmax_raw(i))>GCmax_global) {
-				GCmax_global=std::abs(GCmax_raw(i));
-				//~ pkidx_global=pkidx_raw(i);
-				//~ cellidx_global=i;
-			}
-		}
-		//~ std::cout << cellidx_global << std::endl;
-		//~ std::cout << GCmax_global << std::endl;
-		//~ std::cout << pkidx_global << std::endl;
-		// normalise all GCs to [0,1]
-		for (i = 0; i < Nred; i++) {
-			for (j = 0; j < BINS; j++) {
-				GC_trial.at(i, j)=GC_trial.at(i, j)/GCmax_global;
-			}
-		}
-		//~ std::cout << BINS << "\t" << CUT_tsteps <<std::endl;
-		alpha=alpha_learn/sqN*GCnormfac*GCnormfac;
-		JI=cI*GCnormfac;
 	}
 
 	if(FLAGS.cutGC>0){
@@ -1462,10 +1097,6 @@ int main (int argc, char* argv[]) {
 			didx=arma::find( (arma::abs(GCtrans(i,arma::span(pkidx(i), CUT_tsteps-1))) -0.1) > 0.0 , 1,"last")+pkidx(i);
 			t_decay(i)=Time(didx(0));
 		}
-		//~ std::cout << std::endl;
-		//~ for(i= 0; i < 22; i++) {
-			//~ std::cout << i << "\t" << GCmax(i) << "\t" << t_decay(i) << std::endl;
-		//~ }
 
 		// cut GC transients
 		arma::ucolvec status2(Nred);
@@ -1490,29 +1121,17 @@ int main (int argc, char* argv[]) {
 			}
 		}
 		Nred=GCtrans.n_rows;
-		//~ for(i= 0; i < 22; i++) {
-			//~ std::cout << i << "\t" << GCmax(i) << "\t" << pkidx(i) << "\t" << pkidx(i)*dt << "\t" << t_decay(i) << std::endl;
-		//~ }
-
-		//~ if(rr==0 & (FLAGS.mode==99 || FLAGS.mode==77) ){
-			//~ for(i= 0; i < Nred; i++) {
-				//~ t_decay_file << i << "\t" << GCmax(i) << "\t" << pkidx(i) << "\t" << pkidx(i)*dt << "\t" << t_decay(i) << std::endl;
-			//~ }
-			std::cout << std::endl;
-			if(FLAGS.cutGC==1)		std::cout <<"Cutting GC transients longer than "<< GCcut << " s." << std::endl;
-			else if(FLAGS.cutGC==2) 	std::cout <<"Cutting GC transients shorter than "<< GCcut << " s." << std::endl;
-			std::cout <<"Number of GC transients after cut: "<< GCtrans.n_rows << std::endl;
-			std::cout <<"Number of transient time bins: "<< GCtrans.n_cols << std::endl;
+		std::cout << std::endl;
+		if(FLAGS.cutGC==1)		std::cout <<"Cutting GC transients longer than "<< GCcut << " s." << std::endl;
+		else if(FLAGS.cutGC==2) 	std::cout <<"Cutting GC transients shorter than "<< GCcut << " s." << std::endl;
+		std::cout <<"Number of GC transients after cut: "<< GCtrans.n_rows << std::endl;
+		std::cout <<"Number of transient time bins: "<< GCtrans.n_cols << std::endl;
 	}
 
 	if( (rr==0) & (FLAGS.mode==99 || FLAGS.mode==77) ){
 		// write transients to file
 		GCtrans.save(GCtrans_file,arma::raw_ascii);
 		Time.save(timeGCtrans_file,arma::raw_ascii);
-	}
-	if( (rr==0) & (FLAGS.mode==99 || FLAGS.mode==77) & (FLAGS.normGC==1) ){
-		// write GC rates with global normalisation to file
-		GC_trial.save(GCnorm_global_file,arma::raw_ascii);
 	}
 
 	//	*************************
@@ -1592,14 +1211,6 @@ int main (int argc, char* argv[]) {
 	} // end of delays-loop
 
 //	*************************
-// 	do temporal PCA
-	//~ Dim_GCt=calc_Tdim(GCinT, SVD_tsteps);
-	Dim_GCt=NAN;
-//	*************************
-// 	do pattern PCA
-	//~ calc_Pdim(MFpatterns_CS, GCpatterns, GCpatterns_onset, GCpatterns_trans, PP, N, M, Dim_MF, Dim_GCss, Dim_GConset, Dim_GCtrans);
-	Dim_MF=NAN; Dim_GCss=NAN; Dim_GConset=NAN; Dim_GCtrans=NAN;
-//	*************************
 // 	write stuff to files
 
 	if(( (FLAGS.mode==77) | (FLAGS.mode==99) ) & (rr==0)){
@@ -1607,93 +1218,34 @@ int main (int argc, char* argv[]) {
 			for(j= 0; j < W[i].num; j++) {
 				STPpara_file << i+1 << "\t" << W[i].idx[j]+1 <<"\t" << W[i].Gidx[j] <<"\t" << MFgroup[W[i].idx[j]]
 								<< "\t" << W[i].strgth1[j]<< "\t" << W[i].U1[j] << "\t" << W[i].tauD1[j]*1000 << "\t" << W[i].pf1[j]
-								<< "\t"	<< W[i].strgth2[j]<< "\t" << W[i].U2[j] << "\t" << W[i].tauD2[j]*1000 << "\t" << W[i].pf2[j]
-								<< "\t"	<< W[i].tsyn1[j][ptarget]<< "\t" << W[i].tsyn2[j][ptarget] << std::endl;
+								<< "\t"	<< W[i].strgth2[j]<< "\t" << W[i].U2[j] << "\t" << W[i].tauD2[j]*1000 << "\t" << W[i].pf2[j] << std::endl;
 			}
-		}
-		// write the distribution of slow time constants corresponding to target pattern to file (driver and supporters are mixed!)
-		for (i=0; i<N; i++) {
-			for (j=0; j<W[i].num; j++) {
-				if(FLAGS.cuttsyn==1){
-					if( (W[i].tsyn1[j][ptarget]<tsyncut_hi) && (W[i].tsyn1[j][ptarget]>tsyncut_lo) ) {
-						W[i].tsyn1[j][ptarget]=0;
-					}
-				}
-				else if(FLAGS.cuttsyn==2){
-					if( j>1) {
-						W[i].tsyn1[j][ptarget]=0;
-					}
-				}
-				else if(FLAGS.cuttsyn==3){
-					if( j<2) {
-						W[i].tsyn1[j][ptarget]=0;
-					}
-				}
-				else if(FLAGS.cuttsyn==4){
-					W[i].tsyn1[j][ptarget]=0;
-				}
-				tsyndistrb_file << W[i].tsyn1[j][ptarget] << "\t";
-				B1=W[i].WU1[j]*W[i].alpha1[j]*MFpatterns_CS.at(W[i].idx[j],ptarget)*(MFpatterns_CS.at(W[i].idx[j],ptarget)-MFpatterns_preCS.at(W[i].idx[j],pstart))/((1+W[i].alpha1[j]*MFpatterns_CS.at(W[i].idx[j],ptarget))*(1+W[i].alpha1[j]*MFpatterns_preCS.at(W[i].idx[j],pstart)));
-				Ampdistrb_file << B1 << "\t";
-			}
-			tsyndistrb_file << "\n";
-			Ampdistrb_file << "\n";
 		}
 	}
 
-	//~ if(FLAGS.mode<6 || FLAGS.mode==88 || FLAGS.mode==99){
 	if(FLAGS.groups==5){
-		err_final_file << nuD << "\t" << sigD << "\t" << nuS << "\t" << sigS << "\t" << alpha*sqN << "\t" << NAN << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg << "\t" << JI << "\t" << err_final/double(Ndelays) << std::endl;
+		err_final_file << nuD << "\t" << sigD << "\t" << nuS << "\t" << sigS << "\t" << err_final/double(Ndelays) << std::endl;
 	}
 	else{
-		// REWRITE IN TERMS OF CLUSTERS
-		//~ if(FLAGS.groups>30){
-		//~ if(FLAGS.pattern==5){
-			for (i = 0; i < Ncl; i++) {
-				err_final_file << MF_avrg_CL[i] << "\t" << MF_std_CL[i] << "\t";
-			}
-			for (i = Ncl; i < 5; i++) {
-				err_final_file << NAN << "\t" << NAN << "\t";
-			}
-			err_final_file 	<< alpha*sqN << "\t" << NAN << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg << "\t" << JI << "\t" << err_final/double(Ndelays) << std::endl;
-
-		//~ }
-		//~ else{
-			//~ err_final_file 	<< nu0 << "\t" << sig0 << "\t" << nu1 << "\t" << sig1 << "\t"
-						//~ << nu2 << "\t" << sig2 << "\t" << nu3 << "\t" << sig3 << "\t"
-						//~ << nu4 << "\t" << sig4 << "\t"
-						//~ << alpha*sqN << "\t" << NAN << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg << "\t" << JI << "\t" << err_final/double(Ndelays) << std::endl;
-		//~ }
+		for (i = 0; i < Ncl; i++) {
+			err_final_file << MF_avrg_CL[i] << "\t" << MF_std_CL[i] << "\t";
+		}
+		err_final_file  << err_final/double(Ndelays) << std::endl;
 	}
-
-
-	for (n = 0; n < Ncl; n++) {
-		tsyn_file << tsyn_avrg[n][0] << "\t" << tsyn_std[n][0] << "\t" << foff[n][0] << "\t" ;
-	}
-	tsyn_file << std::endl;
-	for (n = 0; n < Ncl; n++) {
-		tsyn_MFsort_file << tsyn_avrg[n][1] << "\t" << tsyn_std[n][1] << "\t" << foff[n][1] << "\t" ;
-	}
-	tsyn_MFsort_file << std::endl;
-
-	trans_file << hGCpeak << "\t" << GCpeak << std::endl;
-
-	dim_file << Dim_GCt<< "\t"<< Dim_MF << "\t"<< Dim_GCss << "\t"<< Dim_GCtrans << "\t"<< Dim_GConset << std::endl;
 
 	learnparam_file << Ntrials-1<< "\t" << CFsp<< "\t"<< CFscale << "\t"<< CFwidth << "\t"<< errWeight << "\t"<< alpha_learn << "\t"<< cI
-					<< "\t"<< Nreal << "\t"<< Npara << "\t"<< Npara2 << "\t"<< idum << "\t" << avrgJIE<< "\t" << avrgJEI << "\t" << NAN
-					<< "\t" << gain_global << "\t" << nfrac << "\t" << GCtarget << "\t" << NAN << "\t" << GCnormfac << "\t" << Tfac_gc
-					<< "\t" << NAN << "\t" << MFUcorr << "\t" << Ncl
+					<< "\t"<< Nreal << "\t"<< Npara << "\t"<< Npara2 << "\t"<< idum << "\t" << avrgJIE<< "\t" << avrgJEI
+					<< "\t" << gain_global << "\t" << nfrac << "\t" << GCtarget << "\t" << NAN << "\t" << Tfac_gc
+					<< "\t" << MFUcorr << "\t" << Ncl
 					<< "\t" << pact[0] << "\t" << pact[1] << "\t" << pact[2] << "\t" << pact[3] << "\t" << pact[4]
 					<< "\t" << grouplims[0] << "\t" << grouplims[1] << "\t" << grouplims[2] << "\t" << grouplims[3] << "\t" << grouplims[4] << "\t" << grouplims[5]
 					<< "\t" << J2weight << std::endl;
 
-	stats_file << hGCavrg << "\t" << hGCvar << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg << "\t" << JI <<std::endl;
+	stats_file << hGCavrg << "\t" << hGCvar << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg <<std::endl;
 
 	for(i= 0; i < N; i++){
 		for(j= 0; j < W[i].num; j++) {
 			delete [] W[i].x1p[j];		delete [] W[i].x2p[j];
-			delete [] W[i].tsyn1[j];	delete [] W[i].tsyn2[j];
 		}
 		delete [] W[i].idx; 	delete [] W[i].Gidx;
 		delete [] W[i].strgth1;	delete [] W[i].strgth2;
@@ -1705,7 +1257,6 @@ int main (int argc, char* argv[]) {
 
 		delete [] W[i].alpha1;	delete [] W[i].WU1; 	delete [] W[i].Upf1;
 		delete [] W[i].alpha2;	delete [] W[i].WU2; 	delete [] W[i].Upf2;
-		delete [] W[i].tsyn1;	delete [] W[i].tsyn2;
 	}
 
 	drivers.clear();
@@ -1720,7 +1271,6 @@ int main (int argc, char* argv[]) {
 	GC_file.close();
 	MF_file.close();
 	STP_file.close();
-	//~ STP_NU_file.close();
 	MLI_file.close();
 	GoC_file.close();
 	CF_file.close();
@@ -1728,9 +1278,7 @@ int main (int argc, char* argv[]) {
 	time_learn_file.close();
 	STPpara_file.close();
 	GCtrans_file.close();
-	GCnorm_global_file.close();
 	timeGCtrans_file.close();
-	sparse_file.close();
 
 	err_final_file.close();
 	PC_010_file.close();
@@ -1749,13 +1297,6 @@ int main (int argc, char* argv[]) {
 	htarget_BINS_file.close();
 	J_file.close();
 	Jidx_file.close();
-	trans_file.close();
-	tsyn_file.close();
-	tsyndistrb_file.close();
-	Ampdistrb_file.close();
-	tsyn_MFsort_file.close();
-	//~ tsyn_file_D.close();
-	dim_file.close();
 	learnparam_file.close();
 	stats_file.close();
 	flags_file.close();
@@ -1769,7 +1310,6 @@ int main (int argc, char* argv[]) {
 		delete [] JEI[j].strgth;
 	}
 	delete [] J.strgth;
-
 	delete [] MF_Tinput;
 
   return(0);

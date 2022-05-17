@@ -140,7 +140,7 @@ void calc_GCpattern_theta_gain_full(struct presyn_2pools W[], arma::mat& MFpatte
 		a2=b2=e2=f2=0;
 		j2=0;
 		for (k = 0; k < PP; k++) {
-			GCpatterns.at(i,k)=std::max(hGCpatterns.at(i,k)-theta[i],0.0); //+sqrt(dt)*gsl_ran_gaussian_ziggurat (r,0.1);
+			GCpatterns.at(i,k)=std::max(hGCpatterns.at(i,k)-theta[i],0.0);
 			a+=GCpatterns.at(i,k);
 			b+=GCpatterns.at(i,k)*GCpatterns.at(i,k);
 			a2+=GCpatterns.at(i,k);
@@ -157,8 +157,6 @@ void calc_GCpattern_theta_gain_full(struct presyn_2pools W[], arma::mat& MFpatte
 	double avrgGC_tot=a/double(N*PP);
 
 	// renormalise GC steady state firing rates
-//	double GCgain=GCtarget/(e/double(j));
-//	double GCgain=GCtarget/avrgGC_tot;
 	for (i = 0; i < N; i++) {
 		if(FLAGS.gain==0)		GCgain[i]=GCtarget/avrgGC_tot;
 		else if(FLAGS.gain==1)	GCgain[i]=GCtarget/avrgGC[i];

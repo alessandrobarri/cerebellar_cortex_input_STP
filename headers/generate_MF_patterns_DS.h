@@ -1,4 +1,4 @@
-void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avrg_CL[], double MF_std_CL[], struct cluster_struct CL[], arma::vec& NUlims, arma::vec& grouplims, std::vector <int>& drivers, std::vector <int>& supporters, double MF_avrg, double MF_std, double MF_avrg_D, double MF_std_D, double MF_avrg_S, double MF_std_S, double pact[], struct netpara NETPARA, struct flags FLAGS, gsl_rng * r) {
+void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avrg_CL[], double MF_std_CL[], struct cluster_struct CL[], arma::vec& NUlims, arma::vec& grouplims, std::vector <int>& drivers, std::vector <int>& supporters, double MF_avrg_D, double MF_std_D, double MF_avrg_S, double MF_std_S, double pact[], struct netpara NETPARA, struct flags FLAGS, gsl_rng * r) {
 
 	int i,j,k,inidx,finidx;
 	double a;
@@ -35,14 +35,6 @@ void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avr
 			MF_avrg_CL[i]=para_out[0];
 			MF_std_CL[i]=para_out[1];
 		}
-
-		thpara.mean=MF_avrg;
-		thpara.std=MF_std;
-		para_out=find_multiD (thpara, FthresN, 200);
-		MF_avrg=para_out[0];
-		MF_std=para_out[1];
-//		std::cout <<para_out[0] << std::endl;
-//		std::cout <<para_out[1] << std::endl;
 	}
 	// calculate mu and sig parameters for seamless uniform distribution
 	else if(FLAGS.pattern==5){
@@ -64,26 +56,12 @@ void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avr
 			MF_avrg_CL[i]=para_out[0];
 			MF_std_CL[i]=para_out[1];
 		}
-
-		thpara.mean=MF_avrg;
-		thpara.std=MF_std;
-		para_out=find_multiD (thpara, FtruncN, 200);
-		MF_avrg=para_out[0];
-		MF_std=para_out[1];
 	}
 
 	if (FLAGS.groups==5) {
 		// 2 groups: driver & supporter MFs
 		for (i = 0; i < M; i++) {
 			a=gsl_rng_uniform (r);
-			//~ if(a<pdriver) {
-				//~ MFgroup[i]=0;	drivers.push_back(i);
-				//~ for (k = 0; k < PP; k++) MFpatterns.at(i,k)=draw_patterns(MF_avrg_D, MF_std_D, pact[0], FLAGS.pattern,r);
-			//~ }
-			//~ else {
-				//~ MFgroup[i]=1;	supporters.push_back(i);
-				//~ for (k = 0; k < PP; k++) MFpatterns.at(i,k)=draw_patterns(MF_avrg_S, MF_std_S, pact[4], FLAGS.pattern,r);
-			//~ }
 			if(MFgroup[i]==0) {
 				for (k = 0; k < PP; k++) MFpatterns.at(i,k)=draw_patterns(MF_avrg_D, MF_std_D, pact[0], FLAGS.pattern,r);
 			}
@@ -112,7 +90,6 @@ void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avr
 				for (j = 0; j < 5; j++) {
 					inidx=round(M*grouplims(4-j));
 					finidx=round(M*grouplims(5-j));
-					//~ std::cout << inidx<< "\t"<< finidx<< std::endl;
 					for (i = inidx; i < finidx; i++) MFgroup[i]=j;
 				}
 			}

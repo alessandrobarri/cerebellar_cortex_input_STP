@@ -6,13 +6,12 @@
 	// ----------------------------------
 	// desensitisation
 	const double tauG=100.0/1000.0;				// from Hallermann et al. 2010
-	const double deltaG=0.1;					// corresponds to Hallermann et al. 2010
+	const double deltaG=0.1;					// produces desensitisation similar to the levels observed in Hallermann et al. 2010
 
 	// ----------------------------------
 	// synaptic parameters D/S
 	const double Nslow_D=3.5;
 	const double Uslow_D=0.8;
-	//~ const double Uslow_D=0.85;
 	const double pslow_D=0.6;
 
 	const double Nfast_D=14;
@@ -21,14 +20,10 @@
 
 	const double Nslow_S=4;
 	const double Uslow_S=0.4;
-	//~ const double Uslow_S=0.15;
-	//~ const double Uslow_S=Uslow_D;				// for figure 4 (version 8), third row
 	const double pslow_S=0.6;
 
 	const double Nfast_S=6;
 	const double Ufast_S=0.2;
-	//~ const double Ufast_S=0.1;
-	//~ const double Ufast_S=Ufast_D;				// for figure 4 (version 8), third row
 	const double pfast_S=0;
 
 	const double U_dev_fast=0.025;						// SD of release prob distribution for fast pools
@@ -43,7 +38,6 @@
 	const double Ufast_G1=0.72;
 	const double pfast_G1=0;
 	const double tauF_G1=12.0/1000.0;						// tauF from Saviane et al. 2006
-//	const double tauF_G1=0/1000.0;
 
 	const double Nslow_G2=3;
 	const double Uslow_G2=0.8;
@@ -94,7 +88,6 @@
 	// synaptic parameters 5 clusters toy model
 	arma::vec NSLOW = { 4, 4, 4, 4, 4};
 	arma::vec NFAST = { 6, 6, 8, 12, 16};
-	//~ arma::vec NFAST = { 6, 6, 6, 6, 6};
 	arma::vec USLOW = {0.15, 0.325, 0.5, 0.675, 0.85};
 	arma::vec UFAST = {0.1, 0.1, 0.25, 0.325, 0.6};
 	arma::vec PSLOW = {0.6, 0.6, 0.6, 0.6, 0.6};
