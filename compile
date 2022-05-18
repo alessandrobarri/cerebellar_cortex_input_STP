@@ -1,13 +1,13 @@
 #!/bin/bash
 
-g++ -O3 -std=c++11 -o simCC_learn-MULTI_2pools.out simCC_learn-MULTI_2pools.cpp -lgsl -lgslcblas -lm -larmadillo
-g++ -O3 -std=c++11 -o simCC_learn-MULTI_2pools_full.out simCC_learn-MULTI_2pools_full.cpp -lgsl -lgslcblas -lm -larmadillo
+g++ -O0 -Wall -std=c++11 -o simCC_learn-MULTI_2pools.out simCC_learn-MULTI_2pools.cpp -lgsl -lgslcblas -lm -larmadillo
+#~ g++ -O3 -std=c++11 -o simCC_learn-MULTI_2pools_full.out simCC_learn-MULTI_2pools_full.cpp -lgsl -lgslcblas -lm -larmadillo
 
 ## for armadillo library compile with:
 # -larmadillo
 
-## the newestes version of armadillo needs at least c++11 in order to work; thus add:
+## armadillo needs at least c++11 in order to work, thus add:
 # -std=c++11
 
-## in order to link gsl, add::
+## in order to link gsl, add:
 # -lgsl -lgslcblas -lm

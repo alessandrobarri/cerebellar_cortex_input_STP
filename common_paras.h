@@ -5,25 +5,12 @@
 	const int MFSYN=4;						// (average) number of MF to GC synapses per GC
 	const double PCsp=40.0;					// PC spontaneous activity
 
-	// parameters associated with statistics of the MF input patterns
-	double MF_avrg_G1=200.0;		// driver in DS model
-	double MF_avrg_G2=200.0;
-	double MF_avrg_G3=20.0;			// supporter in DS model
-	double MF_avrg_G4=20.0;
-	double MF_avrg_G5=20.0;
-
-	double MF_std_G1=50.0;			// driver in DS model
-	double MF_std_G2=50.0;
-	double MF_std_G3=20.0;			// supporter in DS model
-	double MF_std_G4=20.0;
-	double MF_std_G5=20.0;
-
 	const double pdriver=0.5;				// fraction of D synapses in DS model
 
 	double pact[]={1,1,1,1,1};				// fraction of active MFs (for each group)
 
 	// parameters associated with inhibition
-	double cI=10;						// MLI-to-PC synaptic strength
+	double cI=10;							// MLI-to-PC synaptic strength
 	double avrgJIE=1;						// GC-to-GoC synaptic strength
 	double avrgJEI=1;						// GoC-to-GC synaptic strength
 
@@ -84,8 +71,6 @@
 	std::string cutGC ("no"); 					// cut away GC transients ? "no","above","below" [DOES NOT WORK WITH RECURRENT GOLGI]
 
 	const double GCcut=0.15;						// upper or lower bound for GC transient cut
-	//~ const double GCcut=0.175;						// upper or lower bound for GC transient cut
-	const double GCcut_onset=0.02;				// lower bound for GC transient onsets
 	const double tlate=0.3;						// disregard 'peaks' later than this
 	const double ampsmall=1;					// disregard 'peaks' with amplitude smaller than this
 

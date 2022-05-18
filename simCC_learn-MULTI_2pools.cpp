@@ -63,7 +63,7 @@ struct synpara {
 int main (int argc, char* argv[]) {
 
 	#include "common_paras.h"
-	#include "syn_paras.h"
+	#include "syn_param_reduced.h"
 
 // 	random variable seed
 	int idum= -4;				// default seed
@@ -207,13 +207,13 @@ int main (int argc, char* argv[]) {
 
 	//	variables
 	double err_final,JI;
-	double Tavrg,Gavrg,CLavrg,B1;
+	double Tavrg,Gavrg,CLavrg;
 	double MF_avrg_D,MF_avrg_S,MF_std_D,MF_std_S;
 	double MF_avrg_CL[5],MF_std_CL[5];
 	double nuD,sigD,nuS,sigS;
 	double a,b;
 	int i,j,k,m,n,t,idxS,idxD,Uprobidx,inidx;
-	int tt,kk,ns,np,tcut,tchg1,tchg2;
+	int tt,kk,ns,np,tcut;
 	bool bool_tfive,bool_tten,bool_tcut;
 
 	vector<double> delays = {0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7};
@@ -277,7 +277,6 @@ int main (int argc, char* argv[]) {
 	std::vector <int> D_synID,S_synID;
 	int MFgroup[M];
 
-	int Utoy_slow_ID[NSYN_2];
 	double Utoy_slow[NSYN_2];	double Ntoy_fast[NSYN_2];
 
 	arma::mat MFpatterns_adjust(M,PP);
@@ -542,7 +541,6 @@ int main (int argc, char* argv[]) {
 		a=(1-USLOW[0])*USLOW[0]*USLOW[0]/(U_dev_slow*U_dev_slow) - USLOW[0];
 		b=a*( 1.0/USLOW[0] -1);
 		for (i = 0; i < NSYN_2/5; i++){
-			Utoy_slow_ID[i]=0;
 			Utoy_slow[i]=gsl_ran_beta(r, a, b);
 			Ntoy_fast[i]=NFAST[0];
 		}
@@ -550,7 +548,6 @@ int main (int argc, char* argv[]) {
 		a=(1-USLOW[1])*USLOW[1]*USLOW[1]/(U_dev_slow*U_dev_slow) - USLOW[1];
 		b=a*( 1.0/USLOW[1] -1);
 		for (i = NSYN_2/5; i < NSYN_2*2/5; i++) {
-			Utoy_slow_ID[i]=1;
 			Utoy_slow[i]=gsl_ran_beta(r, a, b);
 			Ntoy_fast[i]=NFAST[1];
 		}
@@ -558,7 +555,6 @@ int main (int argc, char* argv[]) {
 		a=(1-USLOW[2])*USLOW[2]*USLOW[2]/(U_dev_slow*U_dev_slow) - USLOW[2];
 		b=a*( 1.0/USLOW[2] -1);
 		for (i = NSYN_2*2/5; i < NSYN_2*3/5; i++) {
-			Utoy_slow_ID[i]=2;
 			Utoy_slow[i]=gsl_ran_beta(r, a, b);
 			Ntoy_fast[i]=NFAST[2];
 		}
@@ -566,7 +562,6 @@ int main (int argc, char* argv[]) {
 		a=(1-USLOW[3])*USLOW[3]*USLOW[3]/(U_dev_slow*U_dev_slow) - USLOW[3];
 		b=a*( 1.0/USLOW[3] -1);
 		for (i = NSYN_2*3/5; i < NSYN_2*4/5; i++) {
-			Utoy_slow_ID[i]=3;
 			Utoy_slow[i]=gsl_ran_beta(r, a, b);
 			Ntoy_fast[i]=NFAST[3];
 		}
@@ -574,7 +569,6 @@ int main (int argc, char* argv[]) {
 		a=(1-USLOW[4])*USLOW[4]*USLOW[4]/(U_dev_slow*U_dev_slow) - USLOW[4];
 		b=a*( 1.0/USLOW[4] -1);
 		for (i = NSYN_2*4/5; i < NSYN_2; i++) {
-			Utoy_slow_ID[i]=4;
 			Utoy_slow[i]=gsl_ran_beta(r, a, b);
 			Ntoy_fast[i]=NFAST[4];
 		}

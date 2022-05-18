@@ -51,7 +51,6 @@ struct synpara {
 #include "headers/draw_patterns.h"
 #include "headers/threshNmom.h"
 #include "headers/MFGC_STP_2pools_evolve_func.h"
-#include "headers/generate_ratePv_correlations.h"
 #include "headers/calc_GCpattern_theta_gain_full.h"
 #include "headers/learn_weights_DS.h"
 #include "headers/rtnorm.cpp"
@@ -59,7 +58,7 @@ struct synpara {
 int main (int argc, char* argv[]) {
 
 	#include "common_paras.h"
-	#include "syn_paras.h"
+	#include "syn_param_full.h"
 
 // 	random variable seed
 	int idum= -4;				// default seed
@@ -188,12 +187,12 @@ int main (int argc, char* argv[]) {
 	const int ttpre=int(Tpre/dt);
 
 	//	variables
-	double kp,kpp,err_final,JI;
+	double err_final,JI;
 	double Tavrg,Gavrg,CLavrg;
 	double MF_avrg_CL[5],MF_std_CL[5];
 	double a,b;
-	int i,j,k,m,n,t;
-	int tt,kk,ns,np,tcut,tchg1,tchg2;
+	int i,j,k,m,t;
+	int tt,kk,ns,np,tcut;
 	bool bool_tfive,bool_tten,bool_tcut;
 
 	vector<double> delays = {0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7};
@@ -205,7 +204,6 @@ int main (int argc, char* argv[]) {
 	if(FLAGS.mode==77)	Ndelays=5;
 
 	const int NSYN=N*MFSYN;							// number of MFGC synapses
-	const int NSYN_2=2*NSYN;						// double NSYN for identity generation
 
 	double Mdata[5][Nsynpara_2pools];
 
@@ -214,7 +212,7 @@ int main (int argc, char* argv[]) {
 	const double pG2=0.16;
 	const double pG3=0.38;
 	const double pG4=0.24;
-	const double pG5=0.16;
+	//~ const double pG5=0.16;
 
 	// time-window for GC transient cutting
 	const int tcutfrac=10;
@@ -244,13 +242,11 @@ int main (int argc, char* argv[]) {
 	struct presyn_2pools W[N];
 	struct presyn J;
 	struct presyn JEI[N];			// GoC-to-GC
-	struct cluster_struct CL[5];
 	struct netpara NETPARA;
 	J.strgth=new double [N];
 	double theta[N];
 	std::vector <int> dummy;
 	std::vector <int> drivers,supporters;
-	std::vector <int> D_synID,S_synID,C0_synID,C1_synID,C2_synID;
 	std::vector<double> para_out;
 	int MFgroup[M];
 
@@ -380,7 +376,6 @@ int main (int argc, char* argv[]) {
 		if(FLAGS.mode==7) {
 			cI=CI_ARR(pp);
 		}
-		//~ cI=464.16;
 		JI=cI;
 
 	for (int pp2 = 0; pp2 < Npara2; pp2++){
@@ -551,10 +546,6 @@ int main (int argc, char* argv[]) {
 		dummy.clear();
 	}
 	delete [] shffl_arr;
-
-	// **********************************
-	// 	generate correlation between MF- and synapse-types
-	generate_ratePv_correlations(CL, D_synID, S_synID, grouplims, NETPARA, FLAGS, r);
 
 	// -----------------------------------
 	// prepare hand-made synapses
@@ -1045,7 +1036,7 @@ int main (int argc, char* argv[]) {
 //	*************************
 // 	write stuff to files
 
-	if((FLAGS.mode==77 | FLAGS.mode==99) & (rr==0)){
+	if( ( (FLAGS.mode==77) | (FLAGS.mode==99) ) & (rr==0)){
 		for(i= 0; i < 100; i++) {
 			for(j= 0; j < W[i].num; j++) {
 				STPpara_file << i+1 << "\t" << W[i].idx[j]+1 <<"\t" << W[i].Gidx[j] <<"\t" << MFgroup[W[i].idx[j]] << "\n";
@@ -1061,7 +1052,7 @@ int main (int argc, char* argv[]) {
 					<< "\t" << gain_global << "\t" << nfrac << "\t" << GCtarget << "\t" << NAN << "\t" << Tfac_gc
 					<< "\t" << MFUcorr << "\t" << Ncl
 					<< "\t" << pact[0] << "\t" << pact[1] << "\t" << pact[2] << "\t" << pact[3] << "\t" << pact[4]
-					<< "\t" << grouplims[0] << "\t" << grouplims[1] << "\t" << grouplims[2] << "\t" << grouplims[3] << "\t" << grouplims[4] << "\t" << grouplims[5]
+					<< "\t" << NAN << "\t" << NAN << "\t" << NAN << "\t" << NAN << "\t" << NAN << "\t" << NAN
 					<< "\t" << J2weight << std::endl;
 
 	stats_file << hGCavrg << "\t" << hGCvar << "\t" << Tavrg << "\t" << Gavrg << "\t" << CLavrg <<std::endl;
