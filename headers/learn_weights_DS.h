@@ -1,4 +1,4 @@
-double learn_weights_DS(arma::mat& GC_trial, struct presyn& J, arma::uvec& Jidx, double PC[], double delays, double interv_min, double interv_max, double dt, double Tpre, double PCsp, double CFsp, double CFwidth, double CFscale, double errWeight, double J2weight, double JI, double alpha, double dbint, int N, int Nred, int Ntrials, int BINS, int MAX_data, int ttpre, int rr, int pp, int pp2, struct flags FLAGS, std::ofstream& CF_file, std::ofstream& htarget_BINS_file, gsl_rng * r) {
+double learn_weights_DS(arma::mat& GC_trial, struct presyn& J, arma::uvec& Jidx, double PC[], double delays, double interv_min, double interv_max, double dt, double Tpre, double PCsp, double CFsp, double CFscale, double errWeight, double J2weight, double JI, double alpha, double dbint, int N, int Nred, int Ntrials, int BINS, int MAX_data, int ttpre, int rr, int pp, int pp2, struct flags FLAGS, std::ofstream& CF_file, std::ofstream& htarget_BINS_file, gsl_rng * r) {
 
 	int i,m,t,tt,kk,jidx;
 	double YL[N],YLm[N],LAMBm[N],LAMB[N],Jm[N];

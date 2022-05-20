@@ -8,7 +8,6 @@ void generate_MF_patterns_DS(arma::mat& MFpatterns, int MFgroup[], double MF_avr
 	int M=NETPARA.M;
 	int PP=NETPARA.PP;
 	int Ncl=NETPARA.Ncl;
-	//~ double pdriver=NETPARA.pdriver;
 
 	// calculate mu and sig parameters for thresholded Gaussian
 	if(FLAGS.pattern==0){

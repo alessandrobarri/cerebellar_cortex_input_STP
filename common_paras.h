@@ -27,7 +27,6 @@
 	double CFsp=1;							// spontaneous CF firing rate
 	const double CFsp_bayes=5;				// spontaneous CF firing rate for bayesian learning paradigm
 	const double CFscale=0.5;				// scaling of the error signal component
-	double CFwidth=0.025;					// STD (width) of CF template
 	const double errWeight=3.5;				// weight of delay time for delta-learning rule
 
 	// parameters for gradient descend
@@ -59,14 +58,14 @@
 	std::string Driver ("always");				// should every GC receive a driving input? "always", "random"
 
 	std::string Udistrb ("no");					// rel. prob. set to average: "no"
-												// mixture of beta distributions with #SYNclusters = #MFclusters: "beta_mixture"
 												// single uniform distribution with #SYNclusters = #MFclusters : "uniform"
-												// single beta distribution with #SYNclusters = #MFclusters : "beta"
 												// use this while setting Groups='2SYN_2MF', '5SYN_5MF', etc. and set correlation bweteen MF- and SYN-identities via 'MFUcorr'
 
-	std::string pattern ("Gauss");				// pattern type: "Gauss", "trunc_Gauss", "lognorm", "exponential", "gamma", "uniform_multi", "uniform_single" (= seamleass uniform)
+	std::string MFpattern ("Gauss");			// MF pattern type: "Gauss", "trunc_Gauss", "lognorm", "exponential", "gamma", "uniform_multi", "uniform_single" (= seamleass uniform)
 
 	std::string Golgi ("off");					// GoC recurrent feedback: "on", "off"
+
+	std::string cuttsyn ("no"); 				// cut away synapses ? "no","cutS","cutD","cutSLOW","cutFAST"
 
 	std::string cutGC ("no"); 					// cut away GC transients ? "no","above","below" [DOES NOT WORK WITH RECURRENT GOLGI]
 
@@ -78,3 +77,11 @@
 
 	int ptarget=1;								// substrate pattern for sequence/eyeblink learning
 	int pstart=0;								// context pattern for cancellation learning
+
+	// delay intervals for eye-lid conditioning
+	vector<double> delays = {0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7};
+	int Ndelays=7;
+
+	// intervals for bayesian learning
+	vector<double> interv_min = {0.025, 0.05, 0.1, 0.2, 0.3};
+	vector<double> interv_max = {0.15, 0.2, 0.3, 0.4, 0.5};
