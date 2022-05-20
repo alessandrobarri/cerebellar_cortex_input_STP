@@ -17,7 +17,7 @@ No non-standard hardware is required to run the program.
 
 To install the program, copy all files in a custom folder. The code comes with two folders that need to be in the main folder in order for the program to work correctly: 1) a folder named 'headers' which contains essential sub-routines; 2) a folder named 'output' into which the program will write the simulated data.
 
-There are two main program files: 'simCC_full.cpp' and 'simCC.cpp', which simulate the full version (Figures 1,2 and 6) and the reduced version (Figures 3,4,5 and 6) of the cerebellar cortex model, respectively. Under linux, the code can be compiled using:
+There are two main program files: `simCC_full.cpp` and `simCC.cpp`, which simulate the full version (Figures 1,2 and 6) and the reduced version (Figures 3,4,5 and 6) of the cerebellar cortex model, respectively. Under linux, the code can be compiled using:
 
 ` g++ -O3 -std=c++11 -o simCC.out simCC.cpp -lgsl -lgslcblas -lm -larmadillo`
 
@@ -52,13 +52,13 @@ The command line arguments are:
 
 To test that the program works correctly, execute the following for the reduced and full model, respectively:
 
-$ ./simCC.out test/ sample 1 1 4000 -3
+` ./simCC.out test/ sample 1 1 4000 -3 `
 
-$ ./simCC_full.out test_full/ sample 1 1 4000 -3
+` ./simCC_full.out test_full/ sample 1 1 4000 -3 `
 
 Upon execution, the shell prompts a line stating which operation mode has been chosen, as well as a few network parameters. Either program first creates and subsequently writes into the sub-folders `output/test/` or `output/test_full/`. If everything works correctly, the resulting simulated data should be of the same format as in the example output folders provided with the code.
 
-In the 'sample' mode, the programs should run between 40s to 90s (for NS=4000 and NR=1).
+In the *sample* mode, the programs should run between 40s to 90s (for NS=4000 and NR=1).
 
 ## Example output
 
