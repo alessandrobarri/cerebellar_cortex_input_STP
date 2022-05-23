@@ -57,7 +57,7 @@ struct synpara {
 
 int main (int argc, char* argv[]) {
 
-	#include "common_paras.h"
+	#include "common_param.h"
 	#include "syn_rate_param_full.h"
 
 // 	random variable seed
@@ -114,9 +114,9 @@ int main (int argc, char* argv[]) {
 	if (MFpattern.compare("Gauss") == 0) 				FLAGS.pattern=0;
     else if (MFpattern.compare("lognorm") == 0) 		FLAGS.pattern=1;
     else if (MFpattern.compare("exponential") == 0) 	FLAGS.pattern=2;
-    else if (MFpattern.compare("gamma") == 0) 		FLAGS.pattern=3;
-    else if (MFpattern.compare("uniform_multi") == 0) FLAGS.pattern=4;
-    else if (MFpattern.compare("trunc_Gauss") == 0)	FLAGS.pattern=6;
+    else if (MFpattern.compare("gamma") == 0) 			FLAGS.pattern=3;
+    else if (MFpattern.compare("uniform_multi") == 0) 	FLAGS.pattern=4;
+    else if (MFpattern.compare("trunc_Gauss") == 0)		FLAGS.pattern=6;
     else {std::cerr <<"Bad MFpattern string. \n";exit(EXIT_FAILURE);}
 
     if (gaincontrol.compare("global") == 0) 				FLAGS.gain=0;

@@ -63,7 +63,7 @@ struct synpara {
 
 int main (int argc, char* argv[]) {
 
-	#include "common_paras.h"
+	#include "common_param.h"
 	#include "syn_rate_param_reduced.h"
 
 // 	random variable seed

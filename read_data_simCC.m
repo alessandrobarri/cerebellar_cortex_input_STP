@@ -2,52 +2,44 @@ function out=read_MULTI_code_release(name)
 
 shift=[0.025 0.05 0.1 0.2 0.3 0.5 0.7];
 
-% dt=0.005;
-% Tpre=0.1;
-
 %% read files
-
 % specify the folder of the simulation results
-direc='code_release/output/';
+directory='code_release/output/';
 
-MFrates=read_check_file(direc,name,'/err_final.dat');
+MFrates=read_check_file(directory,name,'/err_final.dat');
 
-PC(1).delay=read_check_file(direc,name,'/PC_final_025.dat');
-PC(2).delay=read_check_file(direc,name,'/PC_final_050.dat');
-PC(3).delay=read_check_file(direc,name,'/PC_final_100.dat');
-PC(4).delay=read_check_file(direc,name,'/PC_final_200.dat');
-PC(5).delay=read_check_file(direc,name,'/PC_final_300.dat');
-PC(6).delay=read_check_file(direc,name,'/PC_final_500.dat');
-PC(7).delay=read_check_file(direc,name,'/PC_final_700.dat');
+PC(1).delay=read_check_file(directory,name,'/PC_final_025.dat');
+PC(2).delay=read_check_file(directory,name,'/PC_final_050.dat');
+PC(3).delay=read_check_file(directory,name,'/PC_final_100.dat');
+PC(4).delay=read_check_file(directory,name,'/PC_final_200.dat');
+PC(5).delay=read_check_file(directory,name,'/PC_final_300.dat');
+PC(6).delay=read_check_file(directory,name,'/PC_final_500.dat');
+PC(7).delay=read_check_file(directory,name,'/PC_final_700.dat');
 
-PCtarget=read_check_file(direc,name,'/htarget_BINS.dat');
-J=read_check_file(direc,name,'/J.dat');
+PCtarget=read_check_file(directory,name,'/htarget_BINS.dat');
+J=read_check_file(directory,name,'/J.dat');
 
-time=read_check_file(direc,name,'/time.dat');
-timePC=read_check_file(direc,name,'/time_learn.dat');
-timeGCtrans=read_check_file(direc,name,'/timeGCtrans.dat');
+time=read_check_file(directory,name,'/time.dat');
+timePC=read_check_file(directory,name,'/time_learn.dat');
+timeGCtrans=read_check_file(directory,name,'/timeGCtrans.dat');
 
-MF=read_check_file(direc,name,'/MF.dat');
-MLI=read_check_file(direc,name,'/MLI.dat');
-GoC=read_check_file(direc,name,'/GoC.dat');
+MF=read_check_file(directory,name,'/MF.dat');
+MLI=read_check_file(directory,name,'/MLI.dat');
+GoC=read_check_file(directory,name,'/GoC.dat');
 
-GC=read_check_file(direc,name,'/GC.dat');
-GCtrans=read_check_file(direc,name,'/GCtrans.dat');
+GC=read_check_file(directory,name,'/GC.dat');
+GCtrans=read_check_file(directory,name,'/GCtrans.dat');
 
-CF=read_check_file(direc,name,'/CF.dat');
+CF=read_check_file(directory,name,'/CF.dat');
 
-STP=read_check_file(direc,name,'/MFGC_STP.dat');
-if(isempty(STP))
-    timeSTP=[];
-else
-    timeSTP=STP(:,1);
-    STP=STP(:,2:end);
-end
-STPpara=read_check_file(direc,name,'/STPpara.dat');
+STP=read_check_file(directory,name,'/MFGC_STP.dat');
+timeSTP=STP(:,1);
+STP=STP(:,2:end);
+STPpara=read_check_file(directory,name,'/STPpara.dat');
 
-parameters=read_check_file(direc,name,'/learnparam.dat');
-flags=read_check_file(direc,name,'/flags.dat');
-stats=read_check_file(direc,name,'/stats.dat');
+parameters=read_check_file(directory,name,'/learnparam.dat');
+flags=read_check_file(directory,name,'/flags.dat');
+stats=read_check_file(directory,name,'/stats.dat');
 
 %% sizes
 nt=size(PC(1).delay,2);
@@ -62,7 +54,6 @@ for k=1:ndelays
     PC_mean(k).delay=[];
     for i=1:nt
         y  = reshape(PC(k).delay(1:llc,i), n, []);
-        %     Result = transpose(nansum(y, 1) / n);
         Result = transpose(sum(y, 1) / n);
         PC_mean(k).delay=[PC_mean(k).delay Result]; %#ok<*AGROW>
     end
@@ -289,19 +280,71 @@ elseif(out.flags.GC_cut==1)
 elseif(out.flags.GC_cut==2)
     out.flags.GC_cut='cut below';
 end
-            
+
 out.Teaching_signal_type=out.flags.Teaching_signal;
 out.mode=out.flags.mode;
 
-    function [out,stemp]=read_check_file(direc,name,fname)
-        out=[];
-        path=[direc name fname];
-        if isfile(path)
-            stemp=dir(path);
-            if(stemp.bytes~=0)
-                out=dlmread(path);
-            end
-        end
+end
+
+%% auxiliary functions
+function [out,stemp]=read_check_file(direc,name,fname)
+out=[];
+path=[direc name fname];
+if isfile(path)
+    stemp=dir(path);
+    if(stemp.bytes~=0)
+        out=dlmread(path);
     end
+end
+end
+function Merr=eye_MIN_TE_FWHM(time,PC,delay)
+% find minimum, timing error and FWHM of eyeblink responses
+
+nt=size(PC,1);
+Merr=zeros(nt,4);
+
+for i=1:nt
+    temp=PC(i,:);
+    % find minimum
+    [mm, midx]=min(temp);
+    % half-minimum value
+    hm=temp(1)+(mm-temp(1))/2;
+    % normalised amplitude
+    mm=mm/temp(1);
+    % TE
+    TE=time(midx)-delay;
+    
+    % first crossing of hm
+    rawidx=find(temp<hm,1);
+    if(isempty(rawidx))
+        idx1=NaN;
+        idx2=NaN;
+    else
+        idx1=rawidx+[-1 0];
+        % second crossing of hm
+        idx2=find(temp<hm,1,'last')+[0 1];
+    end
+    
+    if(any(idx2 > length(time)) || any(idx2 > length(temp)))
+        % case with no peak
+        fwhm_m=NaN;
+    elseif(isnan(idx1))
+        fwhm_m=NaN;
+    else
+        t1 = interp1(temp(idx1),time(idx1),hm);
+        t2 = interp1(temp(idx2),time(idx2),hm);
+        fwhm_m = t2 - t1;
+    end
+    
+    Merr(i,1)=mm;
+    Merr(i,2)=TE/0.2;
+    Merr(i,3)=fwhm_m;
+end
+
+% if precision error >1 set it to 1
+Merr(Merr(:,2)>1,2)=1;
+% if width is undefined, set error for width as well as error for
+% precision to 1
+Merr(isnan(Merr(:,3)),2:3)=1;
 
 end
